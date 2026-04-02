@@ -27,6 +27,12 @@ async def test_create_and_complete_run(db_pool):
     assert runs[0]["run_id"] == "run_001"
     assert runs[0]["status"] == "completed"
     assert runs[0]["entities_processed"] == 10
+    # JSONB round-trip: action_distribution comes back as a dict, not a string
+    ad = runs[0]["action_distribution"]
+    assert isinstance(ad, (dict, str))  # asyncpg returns str for jsonb by default
+    import json
+    parsed = json.loads(ad) if isinstance(ad, str) else ad
+    assert parsed == {"priority_outreach": 5, "deprioritize": 3}
 
 
 @pytest.mark.asyncio
@@ -50,3 +56,33 @@ async def test_failed_entities(db_pool):
     failed = await db.get_failed_entities(run_id="run_fail_001")
     assert len(failed) == 1
     assert failed[0]["error_type"] == "validation_error"
+
+
+@pytest.mark.asyncio
+async def test_idempotent_outcome_insert(db_pool):
+    """Second insert for same entity on same day is silently skipped."""
+    db._pool = db_pool
+
+    await db.create_run("run_idem_001")
+
+    inserted = await db.insert_outcome_idempotent(
+        run_id="run_idem_001", entity_id="ent_X",
+        enriched_fields={"score": 42}, action_taken="priority_outreach",
+        rule_matched="high_value", permission_result="allowed",
+    )
+    assert inserted is True
+
+    # Same entity_id on the same calendar day — should be a no-op
+    inserted2 = await db.insert_outcome_idempotent(
+        run_id="run_idem_001", entity_id="ent_X",
+        enriched_fields={"score": 99}, action_taken="deprioritize",
+        rule_matched="low_value", permission_result="allowed",
+    )
+    assert inserted2 is False
+
+    pool = await db.get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM automation_outcomes WHERE entity_id = 'ent_X'"
+    )
+    assert len(rows) == 1
+    assert rows[0]["action_taken"] == "priority_outreach"

@@ -3,6 +3,8 @@ import asyncpg
 import pytest
 from pathlib import Path
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -17,7 +19,7 @@ async def db_pool():
     dsn = "postgresql://decide_hub:decide_hub@localhost:5432/decide_hub"
     pool = await asyncpg.create_pool(dsn)
     # Run schema (idempotent due to IF NOT EXISTS)
-    schema_sql = Path("schema.sql").read_text()
+    schema_sql = (_PROJECT_ROOT / "schema.sql").read_text()
     async with pool.acquire() as conn:
         await conn.execute(schema_sql)
     yield pool

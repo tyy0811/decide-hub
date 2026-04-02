@@ -1,16 +1,10 @@
-.PHONY: test eval serve automate install
+.PHONY: test install db-reset
 
 install:
 	pip install -e ".[dev]"
 
 test:
-	pytest tests/ -v
+	python3 -m pytest tests/ -v
 
-eval:
-	python -m src.evaluation.run
-
-serve:
-	uvicorn src.serving.app:app --reload --port 8000
-
-automate:
-	python -m src.automations.run
+db-reset:
+	docker compose down -v && docker compose up -d postgres

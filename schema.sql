@@ -28,7 +28,9 @@ CREATE TABLE IF NOT EXISTS automation_outcomes (
     action_taken TEXT NOT NULL,
     rule_matched TEXT,
     permission_result TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    processed_date DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (entity_id, processed_date)
 );
 
 CREATE TABLE IF NOT EXISTS pending_approvals (

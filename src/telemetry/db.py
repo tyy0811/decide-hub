@@ -4,6 +4,8 @@ import json
 import asyncpg
 from pathlib import Path
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 _pool: asyncpg.Pool | None = None
 
 
@@ -26,9 +28,10 @@ async def close_pool() -> None:
         _pool = None
 
 
-async def run_schema(schema_path: str = "schema.sql") -> None:
+async def run_schema(schema_path: str | None = None) -> None:
     pool = await get_pool()
-    sql = Path(schema_path).read_text()
+    path = Path(schema_path) if schema_path else _PROJECT_ROOT / "schema.sql"
+    sql = path.read_text()
     async with pool.acquire() as conn:
         await conn.execute(sql)
 
@@ -150,14 +153,30 @@ async def get_failed_entities(run_id: str | None = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-# --- Idempotency check ---
+# --- Idempotency ---
 
-async def check_entity_processed(entity_id: str, run_date: str) -> bool:
-    """Check if entity was already processed on this run date."""
+async def insert_outcome_idempotent(
+    run_id: str,
+    entity_id: str,
+    enriched_fields: dict,
+    action_taken: str,
+    rule_matched: str | None,
+    permission_result: str,
+) -> bool:
+    """Insert automation outcome, skipping if entity already processed today.
+
+    Uses INSERT ... ON CONFLICT DO NOTHING on the unique constraint
+    (entity_id, processed_date). Returns True if the row was inserted,
+    False if it was a duplicate.
+    """
     pool = await get_pool()
-    row = await pool.fetchrow(
-        "SELECT 1 FROM automation_outcomes "
-        "WHERE entity_id = $1 AND created_at::date = $2::date",
-        entity_id, run_date,
+    result = await pool.execute(
+        "INSERT INTO automation_outcomes "
+        "(run_id, entity_id, enriched_fields, action_taken, rule_matched, permission_result) "
+        "VALUES ($1, $2, $3, $4, $5, $6) "
+        "ON CONFLICT (entity_id, processed_date) DO NOTHING",
+        run_id, entity_id, json.dumps(enriched_fields),
+        action_taken, rule_matched, permission_result,
     )
-    return row is not None
+    # asyncpg returns "INSERT 0 1" on success, "INSERT 0 0" on conflict
+    return result == "INSERT 0 1"
