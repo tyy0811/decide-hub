@@ -1,0 +1,163 @@
+"""asyncpg database layer — pool + parameterized query helpers."""
+
+import json
+import asyncpg
+from pathlib import Path
+
+_pool: asyncpg.Pool | None = None
+
+
+async def init_pool(dsn: str) -> asyncpg.Pool:
+    global _pool
+    _pool = await asyncpg.create_pool(dsn)
+    return _pool
+
+
+async def get_pool() -> asyncpg.Pool:
+    if _pool is None:
+        raise RuntimeError("Database pool not initialized. Call init_pool() first.")
+    return _pool
+
+
+async def close_pool() -> None:
+    global _pool
+    if _pool:
+        await _pool.close()
+        _pool = None
+
+
+async def run_schema(schema_path: str = "schema.sql") -> None:
+    pool = await get_pool()
+    sql = Path(schema_path).read_text()
+    async with pool.acquire() as conn:
+        await conn.execute(sql)
+
+
+# --- Outcomes (ranking) ---
+
+async def log_outcome(user_id: int, action: str, reward: float, policy_id: str) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO outcomes (user_id, action, reward, policy_id) "
+        "VALUES ($1, $2, $3, $4)",
+        user_id, action, reward, policy_id,
+    )
+
+
+# --- Automation runs ---
+
+async def create_run(run_id: str) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO automation_runs (run_id, status) VALUES ($1, 'running')",
+        run_id,
+    )
+
+
+async def complete_run(
+    run_id: str,
+    entities_processed: int,
+    entities_failed: int,
+    action_distribution: dict,
+) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "UPDATE automation_runs SET status = 'completed', "
+        "entities_processed = $2, entities_failed = $3, "
+        "action_distribution = $4, completed_at = NOW() "
+        "WHERE run_id = $1",
+        run_id, entities_processed, entities_failed,
+        json.dumps(action_distribution),
+    )
+
+
+async def get_runs(limit: int = 20) -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM automation_runs ORDER BY started_at DESC LIMIT $1",
+        limit,
+    )
+    return [dict(r) for r in rows]
+
+
+# --- Automation outcomes ---
+
+async def log_automation_outcome(
+    run_id: str,
+    entity_id: str,
+    enriched_fields: dict,
+    action_taken: str,
+    rule_matched: str | None,
+    permission_result: str,
+) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO automation_outcomes "
+        "(run_id, entity_id, enriched_fields, action_taken, rule_matched, permission_result) "
+        "VALUES ($1, $2, $3, $4, $5, $6)",
+        run_id, entity_id, json.dumps(enriched_fields),
+        action_taken, rule_matched, permission_result,
+    )
+
+
+# --- Pending approvals ---
+
+async def create_approval(
+    entity_id: str, proposed_action: str, reason: str | None = None,
+) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO pending_approvals (entity_id, proposed_action, reason) "
+        "VALUES ($1, $2, $3)",
+        entity_id, proposed_action, reason,
+    )
+
+
+async def get_pending_approvals() -> list[dict]:
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM pending_approvals WHERE status = 'pending' "
+        "ORDER BY created_at DESC",
+    )
+    return [dict(r) for r in rows]
+
+
+# --- Failed entities ---
+
+async def log_failed_entity(
+    entity_id: str, run_id: str, error_type: str, error_message: str,
+) -> None:
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO failed_entities (entity_id, run_id, error_type, error_message) "
+        "VALUES ($1, $2, $3, $4)",
+        entity_id, run_id, error_type, error_message,
+    )
+
+
+async def get_failed_entities(run_id: str | None = None) -> list[dict]:
+    pool = await get_pool()
+    if run_id:
+        rows = await pool.fetch(
+            "SELECT * FROM failed_entities WHERE run_id = $1 "
+            "ORDER BY created_at DESC",
+            run_id,
+        )
+    else:
+        rows = await pool.fetch(
+            "SELECT * FROM failed_entities ORDER BY created_at DESC LIMIT 100",
+        )
+    return [dict(r) for r in rows]
+
+
+# --- Idempotency check ---
+
+async def check_entity_processed(entity_id: str, run_date: str) -> bool:
+    """Check if entity was already processed on this run date."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT 1 FROM automation_outcomes "
+        "WHERE entity_id = $1 AND created_at::date = $2::date",
+        entity_id, run_date,
+    )
+    return row is not None
