@@ -1,7 +1,9 @@
 import polars as pl
 import pytest
+from pathlib import Path
 from src.policies.base import BasePolicy
 from src.policies.popularity import PopularityPolicy
+from src.policies.data import _read_dat, temporal_split
 
 
 def make_ratings() -> pl.DataFrame:
@@ -64,3 +66,53 @@ def test_popularity_evaluate():
     assert "mrr" in metrics
     assert "hit_rate@2" in metrics
     assert all(0 <= v <= 1 for v in metrics.values())
+
+
+# --- Data loading ---
+
+
+def test_read_dat_parses_double_colon(tmp_path):
+    """_read_dat correctly parses :: separated files."""
+    dat_file = tmp_path / "test.dat"
+    dat_file.write_text("1::Alice::30\n2::Bob::25\n")
+    df = _read_dat(
+        dat_file,
+        columns=["id", "name", "age"],
+        dtypes={"id": int, "name": str, "age": int},
+    )
+    assert len(df) == 2
+    assert df["id"].to_list() == [1, 2]
+    assert df["name"].to_list() == ["Alice", "Bob"]
+    assert df["age"].to_list() == [30, 25]
+
+
+def test_read_dat_handles_latin1(tmp_path):
+    """_read_dat handles latin-1 encoded characters."""
+    dat_file = tmp_path / "test.dat"
+    dat_file.write_bytes("1::caf\xe9::5\n".encode("latin-1"))
+    df = _read_dat(
+        dat_file,
+        columns=["id", "name", "val"],
+        dtypes={"id": int, "name": str, "val": int},
+    )
+    assert df["name"].to_list() == ["caf\xe9"]
+
+
+def test_temporal_split_last_n():
+    """temporal_split puts last n interactions per user in test."""
+    ratings = make_ratings()
+    train, test = temporal_split(ratings, n_test=1)
+    # Each user's highest-timestamp interaction goes to test
+    for uid in [1, 2, 3]:
+        user_test = test.filter(pl.col("user_id") == uid)
+        user_train = train.filter(pl.col("user_id") == uid)
+        assert len(user_test) == 1
+        # Test item should have highest timestamp for that user
+        assert user_test["timestamp"].max() >= user_train["timestamp"].max()
+
+
+def test_temporal_split_no_overlap():
+    """Train and test sets don't share rows."""
+    ratings = make_ratings()
+    train, test = temporal_split(ratings, n_test=2)
+    assert len(train) + len(test) == len(ratings)

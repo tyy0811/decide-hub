@@ -41,18 +41,21 @@ async def main():
     except Exception as e:
         print(f"Postgres not available ({e}), running without logging...")
 
-    # Evaluation runs regardless — errors propagate normally
-    metrics = await run_popularity_evaluation()
+    try:
+        # Evaluation runs regardless — errors propagate normally
+        metrics = await run_popularity_evaluation()
 
-    # Log to Postgres if connected
-    if db_available:
-        for name, value in metrics.items():
-            await db.log_outcome(
-                user_id=0, action=f"eval_{name}",
-                reward=value, policy_id="popularity_v1",
-            )
-        print("\nResults logged to Postgres.")
-        await db.close_pool()
+        # Log to Postgres if connected
+        if db_available:
+            for name, value in metrics.items():
+                await db.log_outcome(
+                    user_id=0, action=f"eval_{name}",
+                    reward=value, policy_id="popularity_v1",
+                )
+            print("\nResults logged to Postgres.")
+    finally:
+        if db_available:
+            await db.close_pool()
 
 
 if __name__ == "__main__":

@@ -11,6 +11,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = _PROJECT_ROOT / "data" / "ml-1m"
 
 
+_DOWNLOAD_TIMEOUT = 120  # seconds
+
+
 def download_movielens() -> None:
     """Download MovieLens 1M if not already present."""
     if (DATA_DIR / "ratings.dat").exists():
@@ -18,9 +21,20 @@ def download_movielens() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     url = "https://files.grouplens.org/datasets/movielens/ml-1m.zip"
     print(f"Downloading MovieLens 1M from {url}...")
-    resp = urllib.request.urlopen(url)
-    z = zipfile.ZipFile(io.BytesIO(resp.read()))
-    z.extractall(_PROJECT_ROOT / "data")
+    try:
+        resp = urllib.request.urlopen(url, timeout=_DOWNLOAD_TIMEOUT)
+        z = zipfile.ZipFile(io.BytesIO(resp.read()))
+        z.extractall(_PROJECT_ROOT / "data")
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Failed to download MovieLens 1M: {e}\n"
+            f"Download manually from {url}, extract to {DATA_DIR}"
+        ) from e
+    except TimeoutError:
+        raise RuntimeError(
+            f"MovieLens download timed out after {_DOWNLOAD_TIMEOUT}s.\n"
+            f"Download manually from {url}, extract to {DATA_DIR}"
+        )
     print("Done.")
 
 

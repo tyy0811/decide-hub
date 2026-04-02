@@ -1,19 +1,21 @@
-# Requires Python 3.11+ with project deps installed (pip install -e ".[dev]").
-# Set PYTHON to whichever interpreter has the deps. Examples:
-#   make test PYTHON=python3.11
-#   make test PYTHON=/usr/local/opt/python@3.11/bin/python3.11
-#   make test PYTHON=.venv/bin/python
-PYTHON ?= python3
+# All targets run through the project venv. `make install` creates it.
+# Override the base interpreter: make install BASE_PYTHON=python3.12
+BASE_PYTHON ?= python3.11
+VENV := .venv
+PYTHON := $(VENV)/bin/python
 
 .PHONY: test install db-reset eval
 
-install:
+$(VENV)/bin/python:
+	$(BASE_PYTHON) -m venv $(VENV)
+
+install: $(VENV)/bin/python
 	$(PYTHON) -m pip install -e ".[dev]"
 
-test:
+test: $(VENV)/bin/python
 	$(PYTHON) -m pytest tests/ -v
 
-eval:
+eval: $(VENV)/bin/python
 	$(PYTHON) -m src.evaluation.run
 
 db-reset:
