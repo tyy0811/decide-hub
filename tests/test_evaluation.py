@@ -66,3 +66,45 @@ def test_hit_rate_miss():
     ranked = [1, 2, 3, 4, 5]
     relevant = {3}
     assert hit_rate_at_k(ranked, relevant, k=2) == 0.0
+
+
+# --- Simulator ---
+
+from src.evaluation.simulator import generate_logged_data, softmax
+
+
+def test_softmax_sums_to_one():
+    import numpy as np
+    logits = np.array([1.0, 2.0, 3.0])
+    probs = softmax(logits, temperature=1.0)
+    assert abs(sum(probs) - 1.0) < 1e-6
+
+
+def test_softmax_temperature():
+    """Higher temperature -> more uniform distribution."""
+    import numpy as np
+    logits = np.array([1.0, 2.0, 3.0])
+    cold = softmax(logits, temperature=0.1)
+    hot = softmax(logits, temperature=10.0)
+    # Cold should be more peaked (lower entropy)
+    assert max(cold) > max(hot)
+
+
+def test_generate_logged_data_shape():
+    data = generate_logged_data(n_samples=100, n_items=10, n_features=5, seed=42)
+    assert len(data["contexts"]) == 100
+    assert len(data["actions"]) == 100
+    assert len(data["rewards"]) == 100
+    assert len(data["propensities"]) == 100
+
+
+def test_generate_logged_data_propensities_valid():
+    """All propensities should be in (0, 1]."""
+    data = generate_logged_data(n_samples=500, n_items=10, n_features=5, seed=42)
+    assert all(0 < p <= 1 for p in data["propensities"])
+
+
+def test_generate_logged_data_rewards_binary():
+    """Rewards should be 0 or 1 (Bernoulli)."""
+    data = generate_logged_data(n_samples=500, n_items=10, n_features=5, seed=42)
+    assert all(r in (0.0, 1.0) for r in data["rewards"])
