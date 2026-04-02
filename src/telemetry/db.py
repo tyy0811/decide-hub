@@ -9,10 +9,22 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _pool: asyncpg.Pool | None = None
 
 
-async def init_pool(dsn: str) -> asyncpg.Pool:
+async def init_pool(dsn: str, run_schema_on_connect: bool = True) -> asyncpg.Pool:
     global _pool
-    _pool = await asyncpg.create_pool(dsn)
+    _pool = await asyncpg.create_pool(dsn, init=_init_connection)
+    if run_schema_on_connect:
+        await run_schema()
     return _pool
+
+
+async def _init_connection(conn: asyncpg.Connection) -> None:
+    """Per-connection setup: register JSONB codec so JSONB columns return dict."""
+    await conn.set_type_codec(
+        "jsonb",
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema="pg_catalog",
+    )
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -70,7 +82,7 @@ async def complete_run(
         "action_distribution = $4, completed_at = NOW() "
         "WHERE run_id = $1",
         run_id, entities_processed, entities_failed,
-        json.dumps(action_distribution),
+        action_distribution,
     )
 
 
@@ -98,7 +110,7 @@ async def log_automation_outcome(
         "INSERT INTO automation_outcomes "
         "(run_id, entity_id, enriched_fields, action_taken, rule_matched, permission_result) "
         "VALUES ($1, $2, $3, $4, $5, $6)",
-        run_id, entity_id, json.dumps(enriched_fields),
+        run_id, entity_id, enriched_fields,
         action_taken, rule_matched, permission_result,
     )
 
@@ -175,7 +187,7 @@ async def insert_outcome_idempotent(
         "(run_id, entity_id, enriched_fields, action_taken, rule_matched, permission_result) "
         "VALUES ($1, $2, $3, $4, $5, $6) "
         "ON CONFLICT (entity_id, processed_date) DO NOTHING",
-        run_id, entity_id, json.dumps(enriched_fields),
+        run_id, entity_id, enriched_fields,
         action_taken, rule_matched, permission_result,
     )
     # asyncpg returns "INSERT 0 1" on success, "INSERT 0 0" on conflict

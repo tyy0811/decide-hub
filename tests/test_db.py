@@ -27,12 +27,10 @@ async def test_create_and_complete_run(db_pool):
     assert runs[0]["run_id"] == "run_001"
     assert runs[0]["status"] == "completed"
     assert runs[0]["entities_processed"] == 10
-    # JSONB round-trip: action_distribution comes back as a dict, not a string
+    # JSONB round-trip: codec guarantees dict, never str
     ad = runs[0]["action_distribution"]
-    assert isinstance(ad, (dict, str))  # asyncpg returns str for jsonb by default
-    import json
-    parsed = json.loads(ad) if isinstance(ad, str) else ad
-    assert parsed == {"priority_outreach": 5, "deprioritize": 3}
+    assert isinstance(ad, dict), f"Expected dict, got {type(ad)}"
+    assert ad == {"priority_outreach": 5, "deprioritize": 3}
 
 
 @pytest.mark.asyncio
