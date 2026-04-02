@@ -7,7 +7,8 @@ from pathlib import Path
 
 import polars as pl
 
-DATA_DIR = Path("data/ml-1m")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = _PROJECT_ROOT / "data" / "ml-1m"
 
 
 def download_movielens() -> None:
@@ -19,7 +20,7 @@ def download_movielens() -> None:
     print(f"Downloading MovieLens 1M from {url}...")
     resp = urllib.request.urlopen(url)
     z = zipfile.ZipFile(io.BytesIO(resp.read()))
-    z.extractall("data")
+    z.extractall(_PROJECT_ROOT / "data")
     print("Done.")
 
 

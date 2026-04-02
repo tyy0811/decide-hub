@@ -26,9 +26,6 @@ class PopularityPolicy(BasePolicy):
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
 
-    def log_outcome(self, user_id: int, item_id: int, reward: float) -> None:
-        pass  # Outcomes are in the dataset for offline evaluation
-
     def evaluate(self, test_data: pl.DataFrame, k: int = 10) -> dict[str, float]:
         all_items = list(self.item_counts.keys())
         users = test_data["user_id"].unique().to_list()
