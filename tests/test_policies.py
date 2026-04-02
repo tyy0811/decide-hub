@@ -116,3 +116,31 @@ def test_temporal_split_no_overlap():
     ratings = make_ratings()
     train, test = temporal_split(ratings, n_test=2)
     assert len(train) + len(test) == len(ratings)
+
+
+# --- Feature engineering ---
+
+from src.policies.features import build_features
+
+
+def test_build_features_shape():
+    """Feature builder returns user and item feature matrices."""
+    ratings = make_ratings()
+    features = build_features(ratings)
+    assert "user_features" in features
+    assert "item_features" in features
+    # Each user/item should have features
+    assert len(features["user_features"]) > 0
+    assert len(features["item_features"]) > 0
+
+
+def test_build_features_columns():
+    """Feature matrix has expected columns."""
+    ratings = make_ratings()
+    features = build_features(ratings)
+    # User features should include interaction stats
+    assert "user_avg_rating" in features["user_features"].columns
+    assert "user_rating_count" in features["user_features"].columns
+    # Item features should include popularity stats
+    assert "item_avg_rating" in features["item_features"].columns
+    assert "item_popularity" in features["item_features"].columns
