@@ -144,3 +144,38 @@ def test_build_features_columns():
     # Item features should include popularity stats
     assert "item_avg_rating" in features["item_features"].columns
     assert "item_popularity" in features["item_features"].columns
+
+
+# --- ScorerPolicy ---
+
+from src.policies.scorer import ScorerPolicy
+
+
+def test_scorer_fit_and_score():
+    """ScorerPolicy trains on ratings and scores items."""
+    ratings = make_ratings()
+    policy = ScorerPolicy().fit(ratings)
+
+    # Score all known items for user 1
+    policy.observe({"user_id": 1})
+    scored = policy.score([10, 20, 30, 40])
+    assert len(scored) == 4
+    # All scores should be numeric
+    assert all(isinstance(s, float) for _, s in scored)
+    # Should be sorted descending
+    scores = [s for _, s in scored]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_scorer_evaluate():
+    """ScorerPolicy evaluate returns metrics dict."""
+    ratings = make_ratings()
+    train = ratings.filter(pl.col("timestamp") <= 2)
+    test = ratings.filter(pl.col("timestamp") > 2)
+
+    policy = ScorerPolicy().fit(train)
+    metrics = policy.evaluate(test, k=2)
+
+    assert "ndcg@2" in metrics
+    assert "mrr" in metrics
+    assert "hit_rate@2" in metrics
