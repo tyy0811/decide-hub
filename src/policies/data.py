@@ -23,39 +23,41 @@ def download_movielens() -> None:
     print("Done.")
 
 
+def _read_dat(path: Path, columns: list[str], dtypes: dict[str, type]) -> pl.DataFrame:
+    """Read a :: separated .dat file (Polars requires single-byte separators)."""
+    text = path.read_text(encoding="latin-1")
+    rows = [line.split("::") for line in text.strip().split("\n")]
+    data = {col: [dtypes[col](row[i]) for row in rows] for i, col in enumerate(columns)}
+    return pl.DataFrame(data)
+
+
 def load_ratings() -> pl.DataFrame:
     """Load ratings.dat into a Polars DataFrame."""
     download_movielens()
-    return pl.read_csv(
+    return _read_dat(
         DATA_DIR / "ratings.dat",
-        separator="::",
-        has_header=False,
-        new_columns=["user_id", "movie_id", "rating", "timestamp"],
-        schema={"user_id": pl.Int64, "movie_id": pl.Int64,
-                "rating": pl.Float64, "timestamp": pl.Int64},
+        columns=["user_id", "movie_id", "rating", "timestamp"],
+        dtypes={"user_id": int, "movie_id": int, "rating": float, "timestamp": int},
     )
 
 
 def load_users() -> pl.DataFrame:
     """Load users.dat into a Polars DataFrame."""
     download_movielens()
-    return pl.read_csv(
+    return _read_dat(
         DATA_DIR / "users.dat",
-        separator="::",
-        has_header=False,
-        new_columns=["user_id", "gender", "age", "occupation", "zip_code"],
+        columns=["user_id", "gender", "age", "occupation", "zip_code"],
+        dtypes={"user_id": int, "gender": str, "age": int, "occupation": int, "zip_code": str},
     )
 
 
 def load_movies() -> pl.DataFrame:
     """Load movies.dat into a Polars DataFrame."""
     download_movielens()
-    return pl.read_csv(
+    return _read_dat(
         DATA_DIR / "movies.dat",
-        separator="::",
-        has_header=False,
-        new_columns=["movie_id", "title", "genres"],
-        schema={"movie_id": pl.Int64, "title": pl.Utf8, "genres": pl.Utf8},
+        columns=["movie_id", "title", "genres"],
+        dtypes={"movie_id": int, "title": str, "genres": str},
     )
 
 
