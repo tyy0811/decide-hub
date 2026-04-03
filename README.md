@@ -2,6 +2,10 @@
 
 Decision-policy engine for ranking, counterfactual evaluation, and safe operational automation.
 
+A full-stack decision system: Python ML backend ranks items and evaluates policies offline, an automation pipeline processes entities with configurable rules and safety guardrails, and a Next.js dashboard gives operators visibility into runs, approvals, and failures.
+
+**Stack:** Python · FastAPI · Postgres · LightGBM · asyncpg · Next.js · React · Tailwind · Playwright · Docker · GitHub Actions
+
 ![Operator Dashboard](docs/dashboard.png)
 
 ## Architecture
@@ -74,10 +78,9 @@ make test    # Run test suite
 | Policy | NDCG@10 | MRR | HitRate@10 |
 |--------|---------|-----|------------|
 | Popularity | 0.0177 | 0.0473 | 0.0954 |
-| LightGBM Scorer (500 users) | 0.0017 | 0.0119 | 0.0080 |
+| LightGBM LambdaRank | 0.0017 | 0.0119 | 0.0080 |
 
-The scorer uses only 6 aggregate features without collaborative filtering signals.
-See [DECISIONS.md](DECISIONS.md) #3 for why this is expected and what the value is.
+Scorer evaluated on a 500-user test split. Uses only 6 aggregate features (user/item means, counts, stds) without collaborative filtering signals — underperformance vs popularity is expected. See [DECISIONS.md](DECISIONS.md) #3 for why this is expected and where the value is.
 
 ## Counterfactual Evaluation (Synthetic Data)
 
@@ -124,11 +127,13 @@ make db-reset  # Reset Postgres (destroys data)
 ## Docker
 
 ```bash
-docker compose up --build -d   # Full stack: Postgres + API + Dashboard
+docker compose up --build -d   # Full stack: Postgres (5432) + API (8000) + Dashboard (3000)
 docker compose down             # Stop all
 ```
 
 ## Roadmap
+
+This repo is designed to grow from static ranking to contextual bandits to full policy learning:
 
 - Collaborative filtering features for scorer (user-item interaction matrix)
 - Contextual bandits (exploration/exploitation with safety bounds)
