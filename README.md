@@ -2,6 +2,8 @@
 
 Decision-policy engine for ranking, counterfactual evaluation, and safe operational automation.
 
+![Operator Dashboard](docs/dashboard.png)
+
 ## Architecture
 
 ```mermaid
