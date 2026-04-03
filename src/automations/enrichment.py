@@ -57,7 +57,7 @@ def enrich_entity(raw: dict, today: date | None = None) -> EnrichedEntity:
 
     # Company size bucket
     company_key = company.lower().replace(" ", "")
-    company_size = COMPANY_SIZES.get(company_key, "unknown" if not company else "mid")
+    company_size = COMPANY_SIZES.get(company_key, "unknown")
 
     # Days since signup
     try:

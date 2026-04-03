@@ -130,3 +130,41 @@ def test_load_rules_config():
     rules = load_rules_config()
     assert len(rules) > 0
     assert all("action" in r for r in rules)
+
+
+def test_rules_missing_fields_blocks_email():
+    """Missing fields + email request -> flag_for_review, NOT send_external_email."""
+    entity = _make_entity(has_missing_fields=True, request_email=True, lead_score=80)
+    action, rule = apply_rules(entity)
+    assert action == "flag_for_review", (
+        f"Expected flag_for_review for incomplete entity, got {action}"
+    )
+
+
+def test_rules_malformed_condition_raises():
+    """Unrecognized condition syntax raises ValueError, not silent pass."""
+    from src.automations.rules import _evaluate_condition
+    entity = _make_entity()
+    with pytest.raises(ValueError, match="Unrecognized condition"):
+        _evaluate_condition("unknown_garbage", entity)
+
+
+def test_rules_unknown_field_raises():
+    """Comparison on a nonexistent field raises ValueError."""
+    from src.automations.rules import _evaluate_condition
+    entity = _make_entity()
+    with pytest.raises(ValueError, match="Unknown field"):
+        _evaluate_condition("nonexistent_field >= 5", entity)
+
+
+def test_enrich_unknown_company_defaults_to_unknown():
+    """Unseen company name defaults to 'unknown', not 'mid'."""
+    raw = {
+        "entity_id": "lead_new",
+        "company": "NeverSeenBeforeCo",
+        "role": "Engineer",
+        "source": "organic",
+        "signup_date": "2026-04-01",
+    }
+    enriched = enrich_entity(raw, today=date(2026, 4, 3))
+    assert enriched.company_size_bucket == "unknown"

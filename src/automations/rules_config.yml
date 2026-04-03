@@ -1,14 +1,16 @@
 # Routing rules — evaluated in order, first match wins.
 # Operator-editable: modify thresholds without code changes.
+#
+# Safety ordering: data-quality checks first, then action routing.
 
 rules:
-  - name: request_email
-    condition: request_email
-    action: send_external_email
-
   - name: missing_fields
     condition: has_missing_fields
     action: flag_for_review
+
+  - name: request_email
+    condition: request_email
+    action: send_external_email
 
   - name: high_value_recent
     condition: lead_score >= 70 and days_since_signup <= 14

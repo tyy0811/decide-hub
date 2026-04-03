@@ -6,6 +6,17 @@ from src.automations.enrichment import EnrichedEntity
 
 _RULES_PATH = Path(__file__).parent / "rules_config.yml"
 
+# Fields on EnrichedEntity that can be used as boolean checks
+_BOOLEAN_FIELDS = frozenset(
+    name for name, info in EnrichedEntity.model_fields.items()
+    if info.annotation is bool
+)
+
+# All valid field names for comparison conditions
+_ALL_FIELDS = frozenset(EnrichedEntity.model_fields.keys())
+
+_COMPARISON_OPS = (">=", "<=", ">", "<", "==")
+
 
 def load_rules_config(path: Path | None = None) -> list[dict]:
     """Load rules from YAML config."""
@@ -18,31 +29,40 @@ def load_rules_config(path: Path | None = None) -> list[dict]:
 def _evaluate_condition(condition: str, entity: EnrichedEntity) -> bool:
     """Evaluate a rule condition against an enriched entity.
 
-    Supports: field checks, comparisons, 'and' conjunctions, 'true'.
+    Supports: boolean field checks, comparisons (>=, <=, >, <, ==),
+    'and' conjunctions, and literal 'true'.
+
+    Raises ValueError on unrecognized condition syntax.
     """
     if condition.strip() == "true":
         return True
 
-    # Split on 'and' for conjunctions
     parts = [p.strip() for p in condition.split(" and ")]
 
     for part in parts:
         # Boolean field check (e.g., "has_missing_fields", "request_email")
-        if part in ("has_missing_fields", "request_email"):
-            if not getattr(entity, part, False):
+        if part in _BOOLEAN_FIELDS:
+            if not getattr(entity, part):
                 return False
             continue
 
         # Comparison: "field >= value" or "field < value"
-        for op in (">=", "<=", ">", "<", "=="):
+        matched_op = False
+        for op in _COMPARISON_OPS:
             if op in part:
-                field, val = part.split(op)
+                field, val = part.split(op, 1)
                 field = field.strip()
                 val = val.strip()
-                entity_val = getattr(entity, field, None)
-                if entity_val is None:
-                    return False
+
+                if field not in _ALL_FIELDS:
+                    raise ValueError(
+                        f"Unknown field '{field}' in rule condition: {condition!r}. "
+                        f"Valid fields: {sorted(_ALL_FIELDS)}"
+                    )
+
+                entity_val = getattr(entity, field)
                 val = type(entity_val)(val)
+
                 if op == ">=" and not (entity_val >= val):
                     return False
                 if op == "<=" and not (entity_val <= val):
@@ -53,7 +73,15 @@ def _evaluate_condition(condition: str, entity: EnrichedEntity) -> bool:
                     return False
                 if op == "==" and not (entity_val == val):
                     return False
+
+                matched_op = True
                 break
+
+        if not matched_op:
+            raise ValueError(
+                f"Unrecognized condition part: {part!r} in rule: {condition!r}. "
+                f"Expected a boolean field, a comparison (field >= value), or 'true'."
+            )
 
     return True
 
