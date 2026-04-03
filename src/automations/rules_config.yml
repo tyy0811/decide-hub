@@ -1,0 +1,28 @@
+# Routing rules — evaluated in order, first match wins.
+# Operator-editable: modify thresholds without code changes.
+
+rules:
+  - name: request_email
+    condition: request_email
+    action: send_external_email
+
+  - name: missing_fields
+    condition: has_missing_fields
+    action: flag_for_review
+
+  - name: high_value_recent
+    condition: lead_score >= 70 and days_since_signup <= 14
+    action: priority_outreach
+
+  - name: medium_value
+    condition: lead_score >= 40
+    action: standard_sequence
+
+  - name: low_value_old
+    condition: lead_score < 40 and days_since_signup > 90
+    action: deprioritize
+
+  # Default fallback
+  - name: default
+    condition: "true"
+    action: standard_sequence
