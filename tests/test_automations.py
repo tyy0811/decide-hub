@@ -21,3 +21,53 @@ async def test_fetch_entities():
 
     assert len(entities) == 5
     assert entities[0]["entity_id"] == "lead_001"
+
+
+# --- Enrichment ---
+
+from datetime import date
+from src.automations.enrichment import enrich_entity, EnrichedEntity
+
+
+def test_enrich_entity_basic():
+    """Enrichment computes expected fields."""
+    raw = {
+        "entity_id": "lead_001",
+        "company": "TechCorp",
+        "role": "CTO",
+        "source": "organic",
+        "signup_date": "2026-03-20",
+    }
+    enriched = enrich_entity(raw, today=date(2026, 4, 3))
+    assert isinstance(enriched, EnrichedEntity)
+    assert enriched.entity_id == "lead_001"
+    assert enriched.lead_score > 0
+    assert enriched.days_since_signup == 14
+    assert enriched.source_quality_tier in ("high", "medium", "low")
+
+
+def test_enrich_entity_missing_company():
+    """Missing company field is handled gracefully."""
+    raw = {
+        "entity_id": "lead_003",
+        "company": "",
+        "role": "PM",
+        "source": "paid_ad",
+        "signup_date": "2025-06-15",
+    }
+    enriched = enrich_entity(raw, today=date(2026, 4, 3))
+    assert enriched.company_size_bucket == "unknown"
+    assert enriched.has_missing_fields is True
+
+
+def test_enrich_entity_high_value_lead():
+    """CTO from organic source with recent signup gets high lead score."""
+    raw = {
+        "entity_id": "lead_001",
+        "company": "TechCorp",
+        "role": "CTO",
+        "source": "organic",
+        "signup_date": "2026-04-01",
+    }
+    enriched = enrich_entity(raw, today=date(2026, 4, 3))
+    assert enriched.lead_score >= 70  # High-value signals
