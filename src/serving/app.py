@@ -1,6 +1,7 @@
-"""FastAPI application — /rank, /evaluate, /approvals, /runs endpoints."""
+"""FastAPI application — /rank, /evaluate, /automate, /approvals, /runs endpoints."""
 
 import os
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -10,9 +11,12 @@ from src.policies.base import BasePolicy
 from src.policies.data import load_ratings, temporal_split
 from src.policies.popularity import PopularityPolicy
 from src.policies.scorer import ScorerPolicy
+from src.automations.crawler import fetch_entities
+from src.automations.orchestrator import run_automation_pipeline
 from src.serving.schemas import (
     RankRequest, RankResponse, ScoredItem,
     EvaluateRequest, EvaluateResponse,
+    AutomateRequest, AutomateResponse,
     ApprovalsResponse, ApprovalItem,
     RunsResponse, RunItem,
     FailedEntitiesResponse, FailedEntityItem,
@@ -136,6 +140,33 @@ async def evaluate(req: EvaluateRequest):
         policy=req.policy,
         k=req.k,
         metrics=metrics,
+    )
+
+
+@app.post("/automate", response_model=AutomateResponse)
+async def automate(req: AutomateRequest):
+    if not _db_available and not req.dry_run:
+        raise HTTPException(503, "Database not available for non-dry-run")
+
+    try:
+        entities = await fetch_entities(req.source_url)
+    except Exception as e:
+        raise HTTPException(502, f"Failed to fetch entities: {e}")
+
+    run_id = f"run_{uuid.uuid4().hex[:12]}"
+    result = await run_automation_pipeline(
+        entities=entities,
+        run_id=run_id,
+        dry_run=req.dry_run,
+    )
+
+    return AutomateResponse(
+        run_id=result["run_id"],
+        status=result["status"],
+        entities_processed=result["entities_processed"],
+        entities_failed=result["entities_failed"],
+        action_distribution=result["action_distribution"],
+        dry_run=result["dry_run"],
     )
 
 

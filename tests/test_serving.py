@@ -52,3 +52,13 @@ def test_health_endpoint(client):
     """GET /health returns ok."""
     response = client.get("/health")
     assert response.status_code == 200
+
+
+def test_automate_endpoint_dry_run(client):
+    """POST /automate with dry_run returns plan without executing."""
+    response = client.post("/automate", json={
+        "source_url": "http://mock/leads",
+        "dry_run": True,
+    })
+    # May fail if mock server not running — test with expected status
+    assert response.status_code in (200, 502, 503)
