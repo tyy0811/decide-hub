@@ -10,3 +10,4 @@ node_modules/
 data/ml-1m/
 data/ml-1m.zip
 .env
+docs/plans/
