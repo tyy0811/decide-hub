@@ -4,7 +4,7 @@ BASE_PYTHON ?= python3.11
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 
-.PHONY: test install db-reset eval
+.PHONY: test install db-reset eval serve
 
 $(VENV)/bin/python:
 	$(BASE_PYTHON) -m venv $(VENV)
@@ -17,6 +17,9 @@ test: $(VENV)/bin/python
 
 eval: $(VENV)/bin/python
 	$(PYTHON) -m src.evaluation.run
+
+serve: $(VENV)/bin/python
+	$(PYTHON) -m uvicorn src.serving.app:app --reload --port 8000
 
 db-reset:
 	docker compose down -v && docker compose up -d postgres
