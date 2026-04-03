@@ -1,7 +1,6 @@
 """FastAPI application — /rank, /evaluate, /approvals, /runs endpoints."""
 
 import os
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -37,6 +36,12 @@ def get_policies() -> dict[str, BasePolicy]:
 async def lifespan(app: FastAPI):
     global _policies, _train_data, _test_data, _db_available
 
+    # Reset state before (re-)initializing
+    _policies.clear()
+    _train_data = None
+    _test_data = None
+    _db_available = False
+
     # Load data and fit policies
     ratings = load_ratings()
     _train_data, _test_data = temporal_split(ratings, n_test=5)
@@ -62,6 +67,7 @@ async def lifespan(app: FastAPI):
 
     if _db_available:
         await db.close_pool()
+        _db_available = False
 
 
 app = FastAPI(title="decide-hub", lifespan=lifespan)
@@ -99,15 +105,9 @@ async def rank(req: RankRequest):
     scored = policy.score(candidates)
     top_k = scored[:req.k]
 
-    # Log to Postgres if available
-    if _db_available:
-        for item_id, score in top_k:
-            await db.log_outcome(
-                user_id=req.user_id,
-                action=f"rank_{item_id}",
-                reward=score,
-                policy_id=req.policy,
-            )
+    # Note: we do NOT log predictions as "outcomes" here.
+    # Outcomes (observed rewards) should come from a separate feedback
+    # endpoint when the user actually engages with a recommended item.
 
     return RankResponse(
         user_id=req.user_id,
@@ -123,6 +123,14 @@ async def evaluate(req: EvaluateRequest):
         raise HTTPException(404, f"Policy '{req.policy}' not loaded")
 
     metrics = policy.evaluate(_test_data, k=req.k)
+
+    # Log evaluation results to Postgres for audit trail
+    if _db_available:
+        for name, value in metrics.items():
+            await db.log_outcome(
+                user_id=0, action=f"eval_{name}",
+                reward=value, policy_id=req.policy,
+            )
 
     return EvaluateResponse(
         policy=req.policy,
