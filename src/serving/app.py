@@ -1,11 +1,13 @@
-"""FastAPI application — /rank, /evaluate, /automate, /approvals, /runs endpoints."""
+"""FastAPI application — /rank, /evaluate, /automate, /approvals, /runs, /metrics endpoints."""
 
 import os
+import time
 import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from src.policies.base import BasePolicy
 from src.policies.data import load_ratings, temporal_split
@@ -22,6 +24,7 @@ from src.serving.schemas import (
     FailedEntitiesResponse, FailedEntityItem,
 )
 from src.telemetry import db
+from src.telemetry.metrics import get_metrics, get_content_type, rank_requests, api_latency
 
 _DEFAULT_DSN = "postgresql://decide_hub:decide_hub@localhost:5432/decide_hub"
 
@@ -89,8 +92,16 @@ async def health():
     return {"status": "ok", "policies": list(_policies.keys())}
 
 
+@app.get("/metrics")
+async def metrics():
+    return Response(content=get_metrics(), media_type=get_content_type())
+
+
 @app.post("/rank", response_model=RankResponse)
 async def rank(req: RankRequest):
+    start = time.time()
+    rank_requests.labels(policy=req.policy).inc()
+
     policy = _policies.get(req.policy)
     if not policy:
         raise HTTPException(404, f"Policy '{req.policy}' not loaded")
@@ -109,9 +120,7 @@ async def rank(req: RankRequest):
     scored = policy.score(candidates)
     top_k = scored[:req.k]
 
-    # Note: we do NOT log predictions as "outcomes" here.
-    # Outcomes (observed rewards) should come from a separate feedback
-    # endpoint when the user actually engages with a recommended item.
+    api_latency.labels(endpoint="/rank").observe(time.time() - start)
 
     return RankResponse(
         user_id=req.user_id,
