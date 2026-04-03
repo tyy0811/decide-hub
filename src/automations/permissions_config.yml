@@ -1,0 +1,15 @@
+# Action permission policy — safety governance layer.
+# Separate from routing rules: different stakeholders own each.
+#
+# Levels:
+#   allowed            — execute immediately
+#   approval_required  — queue for human review
+#   blocked            — never execute, log with reason
+
+permissions:
+  priority_outreach: allowed
+  standard_sequence: allowed
+  deprioritize: allowed
+  flag_for_review: allowed
+  send_external_email: approval_required
+  delete_lead: blocked

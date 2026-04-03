@@ -168,3 +168,37 @@ def test_enrich_unknown_company_defaults_to_unknown():
     }
     enriched = enrich_entity(raw, today=date(2026, 4, 3))
     assert enriched.company_size_bucket == "unknown"
+
+
+# --- Permissions ---
+
+from src.automations.permissions import check_permission, load_permissions_config
+
+
+def test_permission_allowed():
+    result = check_permission("priority_outreach")
+    assert result == "allowed"
+
+
+def test_permission_blocked():
+    result = check_permission("delete_lead")
+    assert result == "blocked"
+
+
+def test_permission_approval_required():
+    result = check_permission("send_external_email")
+    assert result == "approval_required"
+
+
+def test_permission_unknown_action_blocked():
+    """Unknown actions default to blocked."""
+    result = check_permission("totally_unknown_action")
+    assert result == "blocked"
+
+
+def test_all_rule_actions_have_permissions():
+    """Cross-config validation: every rule action has a permissions entry."""
+    rule_actions = {r["action"] for r in load_rules_config()}
+    perm_actions = set(load_permissions_config().keys())
+    missing = rule_actions - perm_actions
+    assert not missing, f"Actions without permissions: {missing}"
