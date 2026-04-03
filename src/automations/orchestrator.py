@@ -4,6 +4,7 @@ Per-entity error handling: one failure doesn't kill the run.
 Idempotency: DB unique constraint on (entity_id, processed_date) prevents duplicates.
 """
 
+import time
 from collections import Counter
 from datetime import date
 
@@ -11,6 +12,10 @@ from src.automations.enrichment import enrich_entity
 from src.automations.rules import apply_rules
 from src.automations.permissions import check_permission
 from src.telemetry import db
+from src.telemetry.metrics import (
+    automation_runs, rule_hits, permission_results,
+    failed_entities_counter, enrichment_duration,
+)
 
 
 async def run_automation_pipeline(
@@ -37,13 +42,17 @@ async def run_automation_pipeline(
 
         try:
             # Enrich
+            enrich_start = time.monotonic()
             enriched = enrich_entity(raw_entity, today=today)
+            enrichment_duration.observe(time.monotonic() - enrich_start)
 
             # Apply rules
             action, rule_name = apply_rules(enriched)
+            rule_hits.labels(action=action).inc()
 
             # Check permissions
             permission = check_permission(action)
+            permission_results.labels(result=permission).inc()
 
             if dry_run:
                 action_counts[action] += 1
@@ -117,6 +126,7 @@ async def run_automation_pipeline(
 
         except Exception as e:
             failed += 1
+            failed_entities_counter.labels(error_type=type(e).__name__).inc()
             if not dry_run:
                 try:
                     await db.log_failed_entity(
@@ -129,6 +139,7 @@ async def run_automation_pipeline(
                     pass  # Don't let failure logging kill the run
 
     # Complete run
+    automation_runs.labels(status="completed").inc()
     if not dry_run:
         await db.complete_run(
             run_id=run_id,
