@@ -4,25 +4,54 @@ Decision-policy engine for ranking, counterfactual evaluation, and safe operatio
 
 ## Architecture
 
-```
-+-------------------------------------------------------------+
-|                        FastAPI                               |
-|  /rank  /evaluate  /automate  /approvals  /runs  /metrics   |
-+----------------------+--------------------------------------+
-|   Ranking Policies   |      Automation Pipeline             |
-|                      |                                      |
-|  PopularityPolicy    |  Crawler (httpx)                     |
-|  ScorerPolicy (LGBM) |  -> Enrichment                      |
-|                      |  -> Rules (YAML config)              |
-|  fit -> observe      |  -> Permissions (YAML config)        |
-|  -> score -> evaluate|  -> Execute or Queue                 |
-+----------------------+--------------------------------------+
-|                 Shared Telemetry Layer                       |
-|         asyncpg (Postgres)  +  Prometheus metrics           |
-+-------------------------------------------------------------+
-|              Operator Dashboard (Next.js)                    |
-|  RunsTable  ApprovalsList  ActionChart  ErrorSummary        |
-+-------------------------------------------------------------+
+```mermaid
+graph TB
+    subgraph API["FastAPI"]
+        rank["/rank"]
+        evaluate["/evaluate"]
+        automate["/automate"]
+        approvals["/approvals"]
+        runs["/runs"]
+        metrics["/metrics"]
+    end
+
+    subgraph Ranking["Ranking Policies"]
+        pop["PopularityPolicy"]
+        scorer["ScorerPolicy (LightGBM)"]
+        flow1["fit → observe → score → evaluate"]
+    end
+
+    subgraph Automation["Automation Pipeline"]
+        crawler["Crawler (httpx)"]
+        enrichment["Enrichment"]
+        rules["Rules (YAML config)"]
+        permissions["Permissions (YAML config)"]
+        execute["Execute or Queue"]
+
+        crawler --> enrichment --> rules --> permissions --> execute
+    end
+
+    subgraph Telemetry["Shared Telemetry Layer"]
+        pg["asyncpg (Postgres)"]
+        prom["Prometheus metrics"]
+    end
+
+    subgraph Dashboard["Operator Dashboard (Next.js)"]
+        runs_table["RunsTable"]
+        approvals_list["ApprovalsList"]
+        action_chart["ActionChart"]
+        error_summary["ErrorSummary"]
+    end
+
+    rank --> Ranking
+    evaluate --> Ranking
+    automate --> Automation
+    approvals --> pg
+    runs --> pg
+
+    Ranking --> Telemetry
+    Automation --> Telemetry
+    Dashboard --> API
 ```
 
 ## Quick Start
@@ -43,7 +72,7 @@ make test    # Run test suite
 | Policy | NDCG@10 | MRR | HitRate@10 |
 |--------|---------|-----|------------|
 | Popularity | 0.0177 | 0.0473 | 0.0954 |
-| LightGBM Scorer | 0.0019 | 0.0120 | 0.0100 |
+| LightGBM Scorer (500 users) | 0.0017 | 0.0119 | 0.0080 |
 
 The scorer uses only 6 aggregate features without collaborative filtering signals.
 See [DECISIONS.md](DECISIONS.md) #3 for why this is expected and what the value is.
