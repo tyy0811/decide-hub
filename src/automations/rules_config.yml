@@ -8,6 +8,10 @@ rules:
     condition: has_missing_fields
     action: flag_for_review
 
+  - name: stale_cold_lead
+    condition: source_quality_tier == low and days_since_signup > 365
+    action: delete_lead
+
   - name: request_email
     condition: request_email
     action: send_external_email

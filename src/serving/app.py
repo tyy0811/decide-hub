@@ -16,7 +16,7 @@ from src.automations.orchestrator import run_automation_pipeline
 from src.serving.schemas import (
     RankRequest, RankResponse, ScoredItem,
     EvaluateRequest, EvaluateResponse,
-    AutomateRequest, AutomateResponse,
+    AutomateRequest, AutomateResponse, EntityResult,
     ApprovalsResponse, ApprovalItem,
     RunsResponse, RunItem,
     FailedEntitiesResponse, FailedEntityItem,
@@ -167,6 +167,7 @@ async def automate(req: AutomateRequest):
         entities_failed=result["entities_failed"],
         action_distribution=result["action_distribution"],
         dry_run=result["dry_run"],
+        results=result.get("results", []),
     )
 
 

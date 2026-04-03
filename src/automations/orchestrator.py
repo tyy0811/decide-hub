@@ -89,6 +89,12 @@ async def run_automation_pipeline(
                     processed += 1
                 continue
 
+            if permission != "allowed":
+                raise ValueError(
+                    f"Unexpected permission level '{permission}' for action '{action}'. "
+                    f"Expected 'allowed', 'blocked', or 'approval_required'."
+                )
+
             # Permission is "allowed" — execute
             inserted = await db.insert_outcome_idempotent(
                 run_id=run_id,

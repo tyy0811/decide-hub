@@ -43,6 +43,13 @@ class AutomateRequest(BaseModel):
     dry_run: bool = False
 
 
+class EntityResult(BaseModel):
+    entity_id: str
+    action: str
+    permission: str
+    rule: str
+
+
 class AutomateResponse(BaseModel):
     run_id: str
     status: str
@@ -50,6 +57,7 @@ class AutomateResponse(BaseModel):
     entities_failed: int
     action_distribution: dict[str, int]
     dry_run: bool
+    results: list[EntityResult] = Field(default_factory=list)
 
 
 # --- Approvals ---

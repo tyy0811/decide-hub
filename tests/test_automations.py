@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.mock_lead_api import MOCK_LEADS
 from src.automations.crawler import fetch_entities
@@ -204,6 +205,28 @@ def test_all_rule_actions_have_permissions():
     assert not missing, f"Actions without permissions: {missing}"
 
 
+def test_invalid_permission_level_raises():
+    """Invalid permission values are rejected at load time."""
+    import tempfile, yaml
+    bad_config = {"permissions": {"some_action": "allowd"}}  # typo
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+        yaml.dump(bad_config, f)
+        f.flush()
+        with pytest.raises(ValueError, match="Invalid permission level"):
+            load_permissions_config(Path(f.name))
+
+
+def test_rules_stale_cold_lead_blocked():
+    """Very old cold outbound lead -> delete_lead (which is blocked)."""
+    entity = _make_entity(
+        source_quality_tier="low", days_since_signup=500,
+        lead_score=10, has_missing_fields=False,
+    )
+    action, rule = apply_rules(entity)
+    assert action == "delete_lead"
+    assert check_permission(action) == "blocked"
+
+
 # --- Orchestrator ---
 
 from src.automations.orchestrator import run_automation_pipeline
@@ -306,3 +329,40 @@ async def test_orchestrator_dry_run(db_pool):
         "SELECT * FROM automation_outcomes WHERE run_id = 'test_dry_run'"
     )
     assert len(outcomes) == 0
+
+    # Dry run SHOULD return per-entity results
+    assert len(result["results"]) == 2
+    assert all("entity_id" in r for r in result["results"])
+    assert all("action" in r for r in result["results"])
+    assert all("permission" in r for r in result["results"])
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_blocked_action_logged(db_pool):
+    """Blocked action is logged to DB but not executed."""
+    from src.telemetry import db as db_module
+    db_module._pool = db_pool
+
+    # Stale cold lead: source_quality_tier=low, days_since_signup > 365
+    stale_lead = {
+        "entity_id": "lead_stale",
+        "company": "DeadCo",
+        "role": "Intern",
+        "source": "cold_outbound",
+        "signup_date": "2024-01-01",
+    }
+
+    result = await run_automation_pipeline(
+        entities=[stale_lead],
+        run_id="test_run_blocked",
+        dry_run=False,
+    )
+
+    assert result["entities_processed"] == 1
+    pool = await db_module.get_pool()
+    outcomes = await pool.fetch(
+        "SELECT * FROM automation_outcomes WHERE run_id = 'test_run_blocked'"
+    )
+    blocked = [dict(r) for r in outcomes if r["permission_result"] == "blocked"]
+    assert len(blocked) == 1
+    assert blocked[0]["action_taken"] == "delete_lead"
