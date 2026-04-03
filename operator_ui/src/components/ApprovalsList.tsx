@@ -28,14 +28,14 @@ export default function ApprovalsList() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-gray-500">Loading approvals...</div>;
+  if (loading) return <div className="text-slate-400">Loading approvals...</div>;
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3">
+      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">
         Pending Approvals
         {approvals.length > 0 && (
-          <span className="ml-2 text-sm bg-orange-100 text-orange-800 px-2 py-0.5 rounded">
+          <span className="ml-2 text-sm bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300 px-2 py-0.5 rounded">
             {approvals.length}
           </span>
         )}
@@ -44,25 +44,25 @@ export default function ApprovalsList() {
         {approvals.map((a) => (
           <div
             key={a.id}
-            className="border border-orange-200 rounded p-3 bg-orange-50"
+            className="border border-orange-200 dark:border-orange-800 rounded p-3 bg-orange-50 dark:bg-orange-950"
           >
             <div className="flex justify-between items-start">
               <div>
-                <span className="font-mono text-xs">{a.entity_id}</span>
-                <span className="mx-2 text-gray-400">&rarr;</span>
-                <span className="font-medium">{a.proposed_action}</span>
+                <span className="font-mono text-xs text-gray-700 dark:text-slate-300">{a.entity_id}</span>
+                <span className="mx-2 text-slate-400">&rarr;</span>
+                <span className="font-medium text-gray-900 dark:text-white">{a.proposed_action}</span>
               </div>
-              <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded">
+              <span className="text-xs bg-orange-200 text-orange-800 dark:bg-orange-900 dark:text-orange-300 px-2 py-0.5 rounded">
                 {a.status}
               </span>
             </div>
             {a.reason && (
-              <p className="text-xs text-gray-500 mt-1">{a.reason}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{a.reason}</p>
             )}
           </div>
         ))}
         {approvals.length === 0 && (
-          <p className="text-gray-400 text-sm">No pending approvals</p>
+          <p className="text-slate-400 text-sm">No pending approvals</p>
         )}
       </div>
     </div>

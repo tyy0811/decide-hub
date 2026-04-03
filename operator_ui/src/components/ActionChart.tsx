@@ -33,30 +33,30 @@ export default function ActionChart() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-gray-500">Loading chart...</div>;
+  if (loading) return <div className="text-slate-400">Loading chart...</div>;
 
   const entries = Object.entries(distribution);
   const maxVal = Math.max(...entries.map(([, v]) => v), 1);
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3">Action Distribution</h2>
+      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Action Distribution</h2>
       {entries.length === 0 ? (
-        <p className="text-gray-400 text-sm">No data yet</p>
+        <p className="text-slate-400 text-sm">No data yet</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {entries.map(([action, count]) => (
             <div key={action} className="flex items-center gap-3">
-              <span className="text-xs w-48 truncate">{action}</span>
-              <div className="flex-1 bg-gray-100 rounded h-5">
+              <span className="text-xs w-48 truncate text-gray-700 dark:text-slate-300">{action}</span>
+              <div className="flex-1 bg-gray-100 dark:bg-slate-700 rounded h-6">
                 <div
-                  className={`h-5 rounded ${
+                  className={`h-6 rounded ${
                     ACTION_COLORS[action] || "bg-indigo-500"
                   }`}
                   style={{ width: `${(count / maxVal) * 100}%` }}
                 />
               </div>
-              <span className="text-xs font-mono w-8 text-right">{count}</span>
+              <span className="text-xs font-mono w-8 text-right text-gray-800 dark:text-slate-200">{count}</span>
             </div>
           ))}
         </div>
