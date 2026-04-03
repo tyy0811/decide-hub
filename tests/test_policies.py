@@ -149,33 +149,81 @@ def test_build_features_columns():
 # --- ScorerPolicy ---
 
 from src.policies.scorer import ScorerPolicy
+import numpy as np
+
+
+def make_scorer_ratings() -> pl.DataFrame:
+    """Larger synthetic ratings with enough signal for LambdaRank.
+
+    10 users, 20 items, ~100 interactions with varied ratings.
+    Users have distinct preferences so the ranker can learn personalization.
+    """
+    rng = np.random.default_rng(42)
+    rows = []
+    for uid in range(1, 11):
+        # Each user rates 8-12 items
+        n_items = rng.integers(8, 13)
+        items = rng.choice(range(1, 21), size=n_items, replace=False)
+        for i, mid in enumerate(items):
+            # Users with even IDs prefer low movie IDs; odd prefer high
+            if uid % 2 == 0:
+                base = 5.0 - (mid / 20.0) * 3.0
+            else:
+                base = 2.0 + (mid / 20.0) * 3.0
+            rating = float(np.clip(base + rng.normal(0, 0.5), 1, 5))
+            rows.append({"user_id": uid, "movie_id": int(mid), "rating": round(rating, 1), "timestamp": i + 1})
+    return pl.DataFrame(rows)
 
 
 def test_scorer_fit_and_score():
     """ScorerPolicy trains on ratings and scores items."""
-    ratings = make_ratings()
-    policy = ScorerPolicy().fit(ratings)
+    ratings = make_scorer_ratings()
+    policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(ratings)
 
-    # Score all known items for user 1
     policy.observe({"user_id": 1})
-    scored = policy.score([10, 20, 30, 40])
-    assert len(scored) == 4
-    # All scores should be numeric
+    scored = policy.score(list(range(1, 21)))
+    assert len(scored) == 20
     assert all(isinstance(s, float) for _, s in scored)
-    # Should be sorted descending
     scores = [s for _, s in scored]
     assert scores == sorted(scores, reverse=True)
 
 
+def test_scorer_predictions_non_constant():
+    """Scorer must produce distinct scores — not a degenerate model."""
+    ratings = make_scorer_ratings()
+    policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(ratings)
+
+    policy.observe({"user_id": 1})
+    scored = policy.score(list(range(1, 21)))
+    scores = [s for _, s in scored]
+    assert len(set(scores)) > 1, f"All scores identical: {scores}"
+
+
+def test_scorer_distinguishes_users():
+    """Different users should get different rankings (personalization signal)."""
+    ratings = make_scorer_ratings()
+    policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(ratings)
+
+    items = list(range(1, 21))
+
+    policy.observe({"user_id": 2})  # even user — prefers low movie IDs
+    scores_even = [s for _, s in policy.score(items)]
+
+    policy.observe({"user_id": 3})  # odd user — prefers high movie IDs
+    scores_odd = [s for _, s in policy.score(items)]
+
+    assert scores_even != scores_odd, "Scorer produces identical scores for different users"
+
+
 def test_scorer_evaluate():
     """ScorerPolicy evaluate returns metrics dict."""
-    ratings = make_ratings()
-    train = ratings.filter(pl.col("timestamp") <= 2)
-    test = ratings.filter(pl.col("timestamp") > 2)
+    ratings = make_scorer_ratings()
+    train = ratings.filter(pl.col("timestamp") <= 6)
+    test = ratings.filter(pl.col("timestamp") > 6)
 
-    policy = ScorerPolicy().fit(train)
-    metrics = policy.evaluate(test, k=2)
+    policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(train)
+    metrics = policy.evaluate(test, k=5)
 
-    assert "ndcg@2" in metrics
+    assert "ndcg@5" in metrics
     assert "mrr" in metrics
-    assert "hit_rate@2" in metrics
+    assert "hit_rate@5" in metrics
