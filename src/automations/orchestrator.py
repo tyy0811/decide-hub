@@ -139,7 +139,7 @@ async def run_automation_pipeline(
                     pass  # Don't let failure logging kill the run
 
     # Complete run
-    automation_runs.labels(status="completed").inc()
+    automation_runs.labels(status="dry_run" if dry_run else "completed").inc()
     if not dry_run:
         await db.complete_run(
             run_id=run_id,
