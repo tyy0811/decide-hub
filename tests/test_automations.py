@@ -202,3 +202,107 @@ def test_all_rule_actions_have_permissions():
     perm_actions = set(load_permissions_config().keys())
     missing = rule_actions - perm_actions
     assert not missing, f"Actions without permissions: {missing}"
+
+
+# --- Orchestrator ---
+
+from src.automations.orchestrator import run_automation_pipeline
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_processes_entities(db_pool):
+    """Orchestrator processes entities through full pipeline."""
+    from src.telemetry import db as db_module
+    db_module._pool = db_pool
+
+    result = await run_automation_pipeline(
+        entities=MOCK_LEADS[:2],  # Two normal leads
+        run_id="test_run_001",
+        dry_run=False,
+    )
+
+    assert result["status"] == "completed"
+    assert result["entities_processed"] == 2
+    assert result["entities_failed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_approval_required(db_pool):
+    """Approval-required action appears in pending_approvals table."""
+    from src.telemetry import db as db_module
+    db_module._pool = db_pool
+
+    # Lead 005 has request_email=True -> send_external_email -> approval_required
+    email_lead = MOCK_LEADS[4]
+
+    result = await run_automation_pipeline(
+        entities=[email_lead],
+        run_id="test_run_approval",
+        dry_run=False,
+    )
+
+    approvals = await db_module.get_pending_approvals()
+    email_approvals = [a for a in approvals if a["entity_id"] == "lead_005"]
+    assert len(email_approvals) == 1
+    assert email_approvals[0]["proposed_action"] == "send_external_email"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_idempotent_rerun(db_pool):
+    """Rerunning with same entities on same day does not duplicate rows."""
+    from src.telemetry import db as db_module
+    db_module._pool = db_pool
+
+    entities = [MOCK_LEADS[0]]
+
+    await run_automation_pipeline(entities=entities, run_id="test_idem_001", dry_run=False)
+    await run_automation_pipeline(entities=entities, run_id="test_idem_002", dry_run=False)
+
+    pool = await db_module.get_pool()
+    outcomes = await pool.fetch(
+        "SELECT * FROM automation_outcomes WHERE entity_id = 'lead_001'"
+    )
+    # Should have only 1 outcome (second run skipped due to idempotency)
+    assert len(outcomes) == 1
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_failed_entity_logged(db_pool):
+    """Failed entity is logged with correct error_type."""
+    from src.telemetry import db as db_module
+    db_module._pool = db_pool
+
+    bad_entity = {"entity_id": "lead_bad", "signup_date": "not-a-date", "role": None}  # Will fail in enrichment
+
+    result = await run_automation_pipeline(
+        entities=[bad_entity],
+        run_id="test_run_fail",
+        dry_run=False,
+    )
+
+    assert result["entities_failed"] == 1
+    failed = await db_module.get_failed_entities(run_id="test_run_fail")
+    assert len(failed) == 1
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_dry_run(db_pool):
+    """Dry run returns what would happen without executing."""
+    from src.telemetry import db as db_module
+    db_module._pool = db_pool
+
+    result = await run_automation_pipeline(
+        entities=MOCK_LEADS[:2],
+        run_id="test_dry_run",
+        dry_run=True,
+    )
+
+    assert result["dry_run"] is True
+    assert result["entities_processed"] == 2
+
+    # Dry run should NOT write to automation_outcomes
+    pool = await db_module.get_pool()
+    outcomes = await pool.fetch(
+        "SELECT * FROM automation_outcomes WHERE run_id = 'test_dry_run'"
+    )
+    assert len(outcomes) == 0
