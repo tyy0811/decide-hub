@@ -10,6 +10,12 @@ export default defineConfig({
   },
   webServer: [
     {
+      command: "cd .. && .venv/bin/python operator_ui/e2e/mock_server.py",
+      port: 9999,
+      timeout: 10000,
+      reuseExistingServer: true,
+    },
+    {
       command: "cd .. && .venv/bin/python -m uvicorn src.serving.app:app --port 8000",
       port: 8000,
       timeout: 120000,

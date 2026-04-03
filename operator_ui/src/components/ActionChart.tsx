@@ -19,10 +19,12 @@ export default function ActionChart() {
 
   useEffect(() => {
     fetch(`${API_BASE}/runs`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
       .then((data) => {
-        // Aggregate action distribution from most recent run
-        const runs = data.runs || [];
+        const runs = data.runs ?? [];
         if (runs.length > 0) {
           setDistribution(runs[0].action_distribution || {});
         }

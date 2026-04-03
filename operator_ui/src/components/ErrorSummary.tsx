@@ -17,8 +17,11 @@ export default function ErrorSummary() {
 
   useEffect(() => {
     fetch(`${API_BASE}/failed-entities`)
-      .then((r) => r.json())
-      .then((data) => setErrors(data.failed_entities))
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
+      .then((data) => setErrors(data.failed_entities ?? []))
       .catch(() => setErrors([]))
       .finally(() => setLoading(false));
   }, []);

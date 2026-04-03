@@ -20,8 +20,11 @@ export default function RunsTable() {
 
   useEffect(() => {
     fetch(`${API_BASE}/runs`)
-      .then((r) => r.json())
-      .then((data) => setRuns(data.runs))
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
+      .then((data) => setRuns(data.runs ?? []))
       .catch(() => setRuns([]))
       .finally(() => setLoading(false));
   }, []);

@@ -19,8 +19,11 @@ export default function ApprovalsList() {
 
   useEffect(() => {
     fetch(`${API_BASE}/approvals`)
-      .then((r) => r.json())
-      .then((data) => setApprovals(data.approvals))
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
+      .then((data) => setApprovals(data.approvals ?? []))
       .catch(() => setApprovals([]))
       .finally(() => setLoading(false));
   }, []);
