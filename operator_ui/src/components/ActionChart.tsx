@@ -40,7 +40,8 @@ export default function ActionChart() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Action Distribution</h2>
+      <h2 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">Action Distribution</h2>
+      <p className="text-xs text-slate-400 mb-3">Breakdown of routing decisions from the most recent automation run.</p>
       {entries.length === 0 ? (
         <p className="text-slate-400 text-sm">No data yet</p>
       ) : (

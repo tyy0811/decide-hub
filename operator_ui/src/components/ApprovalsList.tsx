@@ -32,7 +32,7 @@ export default function ApprovalsList() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">
+      <h2 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">
         Pending Approvals
         {approvals.length > 0 && (
           <span className="ml-2 text-sm bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300 px-2 py-0.5 rounded">
@@ -40,6 +40,7 @@ export default function ApprovalsList() {
           </span>
         )}
       </h2>
+      <p className="text-xs text-slate-400 mb-3">Actions that require human review before execution. Triggered by permission rules.</p>
       <div className="space-y-2">
         {approvals.map((a) => (
           <div

@@ -33,7 +33,8 @@ export default function RankingDemo() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Ranking Demo</h2>
+      <h2 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">Ranking Demo</h2>
+      <p className="text-xs text-slate-400 mb-3">Get top-10 movie recommendations for any user. Compare popularity baseline vs learned LightGBM scorer.</p>
       <div className="flex gap-2 mb-3">
         <input
           type="number"

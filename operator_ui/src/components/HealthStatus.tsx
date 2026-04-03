@@ -28,7 +28,8 @@ export default function HealthStatus() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">System Health</h2>
+      <h2 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">System Health</h2>
+      <p className="text-xs text-slate-400 mb-3">API status and which ranking policies are loaded and ready to serve.</p>
       {health ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2">

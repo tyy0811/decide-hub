@@ -28,7 +28,8 @@ export default function EvalMetrics() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Evaluation Metrics</h2>
+      <h2 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">Evaluation Metrics</h2>
+      <p className="text-xs text-slate-400 mb-3">Run offline evaluation on MovieLens 1M test set. Measures NDCG, MRR, and HitRate at K.</p>
       <div className="flex gap-2 mb-3">
         <select
           value={policy}

@@ -33,7 +33,8 @@ export default function RunsTable() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Recent Automation Runs</h2>
+      <h2 className="text-lg font-semibold mb-1 text-gray-900 dark:text-white">Recent Automation Runs</h2>
+      <p className="text-xs text-slate-400 mb-3">History of automation pipeline executions showing entities processed, failures, and timing.</p>
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b border-gray-200 dark:border-slate-600">
