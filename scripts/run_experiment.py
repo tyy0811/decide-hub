@@ -1,16 +1,16 @@
 """Run A/B experiment: control (logging policy) vs treatment (scorer-like policy).
 
-Uses the existing simulator to generate data. If bandit policy is available,
-includes bandit vs scorer comparison for a richer demo.
+Uses the existing simulator to generate data with raw reward, value-weighted
+KPI, and segmented analyses.
 
-Usage: python scripts/run_experiment.py
+Usage: .venv/bin/python scripts/run_experiment.py
 """
 
 import numpy as np
 
 from src.evaluation.simulator import generate_logged_data, softmax
 from src.evaluation.experiment import run_experiment, minimum_detectable_effect
-from src.evaluation.kpi import value_proxy, retention_proxy
+from src.evaluation.kpi import value_proxy
 from src.evaluation.report import render_markdown
 
 
@@ -24,12 +24,14 @@ def main():
     # Treatment: simulate a "better" policy (lower temperature = more greedy)
     rng = np.random.default_rng(99)
     item_features = data["item_features"]
+    treatment_actions = []
     treatment_rewards = []
     for ctx in data["contexts"]:
         scores = np.array(ctx) @ item_features.T
         probs = softmax(scores, temperature=0.5)  # more greedy
         action = rng.choice(data["n_items"], p=probs)
         reward_prob = 1.0 / (1.0 + np.exp(-scores[action]))
+        treatment_actions.append(action)
         treatment_rewards.append(float(rng.binomial(1, reward_prob)))
     treatment_rewards = np.array(treatment_rewards)
 
@@ -44,20 +46,24 @@ def main():
     )
     print(render_markdown(result))
 
-    # --- KPI: retention proxy ---
+    # --- KPI: value proxy (reward weighted by synthetic item price) ---
     print("=" * 60)
-    print("KPI: Retention Proxy (engagement > 0.5)")
+    print("KPI: Value Proxy (reward × item price)")
     print("=" * 60)
-    control_retention = np.array(retention_proxy(control_rewards.tolist()))
-    treatment_retention = np.array(retention_proxy(treatment_rewards.tolist()))
-    retention_result = run_experiment(control_retention, treatment_retention, seed=42)
-    print(render_markdown(retention_result))
+    # Synthetic prices: higher-index items cost more (range $1-$50)
+    n_items = data["n_items"]
+    item_prices = np.linspace(1.0, 50.0, n_items)
+    control_prices = [item_prices[a] for a in data["actions"]]
+    treatment_prices = [item_prices[a] for a in treatment_actions]
+    control_value = np.array(value_proxy(control_rewards.tolist(), control_prices))
+    treatment_value = np.array(value_proxy(treatment_rewards.tolist(), treatment_prices))
+    value_result = run_experiment(control_value, treatment_value, seed=42)
+    print(render_markdown(value_result))
 
     # --- Segmented analysis ---
     print("=" * 60)
-    print("SEGMENTED: By reward quartile (proxy for user activity)")
+    print("SEGMENTED: By context affinity (first feature sign)")
     print("=" * 60)
-    # Segment by context feature (first dimension sign → proxy for user type)
     contexts = data["contexts"]
     segments_c = ["high_affinity" if ctx[0] > 0 else "low_affinity" for ctx in contexts]
     segments_t = ["high_affinity" if ctx[0] > 0 else "low_affinity" for ctx in contexts]
