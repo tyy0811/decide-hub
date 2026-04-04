@@ -113,3 +113,10 @@ class FailedEntityItem(BaseModel):
 class FailedEntitiesResponse(BaseModel):
     failed_entities: list[FailedEntityItem]
     total: int
+
+
+class RetryResponse(BaseModel):
+    retried: int
+    succeeded: int
+    dead_lettered: int
+    still_failing: int

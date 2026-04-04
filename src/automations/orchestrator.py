@@ -182,6 +182,7 @@ async def run_automation_pipeline(
                         run_id=run_id,
                         error_type=type(e).__name__,
                         error_message=str(e),
+                        entity_data=raw_entity,
                     )
                 except Exception:
                     pass  # Don't let failure logging kill the run

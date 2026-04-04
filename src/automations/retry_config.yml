@@ -1,0 +1,11 @@
+# Retry policy per error type.
+# Entities exceeding max_retries move to dead_letter status.
+retry_policies:
+  fetch_timeout:
+    max_retries: 2
+  enrichment_error:
+    max_retries: 1
+  validation_error:
+    max_retries: 0
+  default:
+    max_retries: 0

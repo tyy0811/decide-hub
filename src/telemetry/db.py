@@ -2,6 +2,7 @@
 
 import json
 import asyncpg
+import yaml
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -157,13 +158,32 @@ async def update_approval_status(approval_id: int, status: str) -> None:
 
 async def log_failed_entity(
     entity_id: str, run_id: str, error_type: str, error_message: str,
+    entity_data: dict | None = None,
 ) -> None:
     pool = get_pool()
+    max_retries = _get_max_retries(error_type)
+    status = "dead_letter" if max_retries == 0 else "failed"
     await pool.execute(
-        "INSERT INTO failed_entities (entity_id, run_id, error_type, error_message) "
-        "VALUES ($1, $2, $3, $4)",
+        "INSERT INTO failed_entities "
+        "(entity_id, run_id, error_type, error_message, max_retries, status, entity_data) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
         entity_id, run_id, error_type, error_message,
+        max_retries, status, entity_data,
     )
+
+
+def _get_max_retries(error_type: str) -> int:
+    """Look up max_retries for an error type from retry config."""
+    config_path = Path(__file__).resolve().parent.parent / "automations" / "retry_config.yml"
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        policies = config.get("retry_policies", {})
+        if error_type in policies:
+            return policies[error_type].get("max_retries", 0)
+        return policies.get("default", {}).get("max_retries", 0)
+    except Exception:
+        return 0
 
 
 async def get_failed_entities(run_id: str | None = None) -> list[dict]:
@@ -179,6 +199,33 @@ async def get_failed_entities(run_id: str | None = None) -> list[dict]:
             "SELECT * FROM failed_entities ORDER BY created_at DESC LIMIT 100",
         )
     return [dict(r) for r in rows]
+
+
+async def get_retryable_entities() -> list[dict]:
+    """Get entities eligible for retry (status='failed', retry_count < max_retries)."""
+    pool = get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM failed_entities "
+        "WHERE status = 'failed' AND retry_count < max_retries "
+        "ORDER BY created_at ASC",
+    )
+    return [dict(r) for r in rows]
+
+
+async def increment_retry_count(entity_row_id: int) -> None:
+    """Increment retry count. If at max, set status to dead_letter."""
+    pool = get_pool()
+    await pool.execute(
+        "UPDATE failed_entities SET retry_count = retry_count + 1, "
+        "status = CASE WHEN retry_count + 1 >= max_retries THEN 'dead_letter' ELSE 'failed' END "
+        "WHERE id = $1",
+        entity_row_id,
+    )
+
+
+async def delete_failed_entity(entity_row_id: int) -> None:
+    pool = get_pool()
+    await pool.execute("DELETE FROM failed_entities WHERE id = $1", entity_row_id)
 
 
 # --- Idempotency ---

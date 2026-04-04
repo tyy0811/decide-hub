@@ -23,6 +23,7 @@ from src.serving.schemas import (
     ApprovalsResponse, ApprovalItem, ApprovalActionResponse,
     RunsResponse, RunItem,
     FailedEntitiesResponse, FailedEntityItem,
+    RetryResponse,
 )
 from src.telemetry import db
 from src.telemetry.audit import log_audit_event
@@ -322,4 +323,45 @@ async def get_failed_entities(run_id: str | None = None):
             for r in rows
         ],
         total=len(rows),
+    )
+
+
+@app.post("/automate/retry", response_model=RetryResponse)
+async def retry_failed():
+    if not _db_available:
+        raise HTTPException(503, "Database not available")
+
+    retryable = await db.get_retryable_entities()
+    succeeded = 0
+    dead_lettered = 0
+    still_failing = 0
+
+    for entity_row in retryable:
+        raw = entity_row.get("entity_data")
+        if not raw:
+            await db.increment_retry_count(entity_row["id"])
+            still_failing += 1
+            continue
+
+        try:
+            result = await run_automation_pipeline(
+                entities=[raw],
+                run_id=f"retry_{entity_row['id']}",
+                dry_run=False,
+            )
+            if result["entities_failed"] == 0:
+                await db.delete_failed_entity(entity_row["id"])
+                succeeded += 1
+            else:
+                await db.increment_retry_count(entity_row["id"])
+                still_failing += 1
+        except Exception:
+            await db.increment_retry_count(entity_row["id"])
+            still_failing += 1
+
+    return RetryResponse(
+        retried=len(retryable),
+        succeeded=succeeded,
+        dead_lettered=dead_lettered,
+        still_failing=still_failing,
     )
