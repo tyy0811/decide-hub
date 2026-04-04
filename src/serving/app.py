@@ -25,9 +25,10 @@ from src.serving.schemas import (
     FailedEntitiesResponse, FailedEntityItem,
     RetryResponse,
 )
+from src.serving.rate_limit import SlidingWindowRateLimiter, check_entity_cap, check_backpressure
 from src.telemetry import db
 from src.telemetry.audit import log_audit_event
-from src.telemetry.metrics import get_metrics, get_content_type, rank_requests, api_latency
+from src.telemetry.metrics import get_metrics, get_content_type, rank_requests, api_latency, rate_limited_total
 
 _DEFAULT_DSN = "postgresql://decide_hub:decide_hub@localhost:5432/decide_hub"
 
@@ -36,6 +37,9 @@ _policies: dict[str, BasePolicy] = {}
 _train_data = None
 _test_data = None
 _db_available = False
+_automate_limiter = SlidingWindowRateLimiter(max_requests=5, window_seconds=60.0)
+
+MAX_ENTITIES_PER_RUN = 100
 
 
 def get_policies() -> dict[str, BasePolicy]:
@@ -156,13 +160,39 @@ async def evaluate(req: EvaluateRequest):
 
 @app.post("/automate", response_model=AutomateResponse)
 async def automate(req: AutomateRequest):
+    # Rate limit check
+    if not _automate_limiter.allow():
+        rate_limited_total.labels(endpoint="/automate", reason="run_frequency").inc()
+        raise HTTPException(
+            429,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": str(int(_automate_limiter.retry_after()) + 1)},
+        )
+
     if not _db_available and not req.dry_run:
         raise HTTPException(503, "Database not available for non-dry-run")
+
+    # Backpressure check
+    if _db_available and not req.dry_run:
+        if await check_backpressure():
+            rate_limited_total.labels(endpoint="/automate", reason="backpressure").inc()
+            raise HTTPException(
+                429,
+                detail="Backpressure: write rate too high",
+                headers={"Retry-After": "30"},
+            )
 
     try:
         entities = await fetch_entities(req.source_url)
     except Exception as e:
         raise HTTPException(502, f"Failed to fetch entities: {e}")
+
+    # Entity cap validation
+    if len(entities) > MAX_ENTITIES_PER_RUN:
+        raise HTTPException(
+            422,
+            detail=f"Entity count {len(entities)} exceeds maximum {MAX_ENTITIES_PER_RUN}",
+        )
 
     run_id = f"run_{uuid.uuid4().hex[:12]}"
     result = await run_automation_pipeline(
@@ -211,15 +241,16 @@ async def approve_action(approval_id: int):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
-    approval = await db.get_approval_by_id(approval_id)
+    # Atomic transition: avoids TOCTOU race from separate read+check+update
+    approval = await db.claim_approval(approval_id, "approved")
     if not approval:
-        raise HTTPException(404, f"Approval {approval_id} not found")
-    if approval["status"] != "pending":
-        raise HTTPException(409, f"Approval {approval_id} is already {approval['status']}")
+        existing = await db.get_approval_by_id(approval_id)
+        if not existing:
+            raise HTTPException(404, f"Approval {approval_id} not found")
+        raise HTTPException(409, f"Approval {approval_id} is already {existing['status']}")
 
-    await db.update_approval_status(approval_id, "approved")
-
-    # Create a synthetic run for the approval execution
+    # Record the approval outcome (bookkeeping only)
+    # TODO: trigger actual action execution (e.g. send email) once executor is built
     approval_run_id = f"approval_{approval_id}"
     await db.create_run(approval_run_id)
     await db.complete_run(approval_run_id, entities_processed=1, entities_failed=0, action_distribution={approval["proposed_action"]: 1})
@@ -257,13 +288,13 @@ async def reject_action(approval_id: int):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
-    approval = await db.get_approval_by_id(approval_id)
+    # Atomic transition: avoids TOCTOU race from separate read+check+update
+    approval = await db.claim_approval(approval_id, "rejected")
     if not approval:
-        raise HTTPException(404, f"Approval {approval_id} not found")
-    if approval["status"] != "pending":
-        raise HTTPException(409, f"Approval {approval_id} is already {approval['status']}")
-
-    await db.update_approval_status(approval_id, "rejected")
+        existing = await db.get_approval_by_id(approval_id)
+        if not existing:
+            raise HTTPException(404, f"Approval {approval_id} not found")
+        raise HTTPException(409, f"Approval {approval_id} is already {existing['status']}")
 
     await log_audit_event(
         entity_id=approval["entity_id"],
@@ -328,6 +359,14 @@ async def get_failed_entities(run_id: str | None = None):
 
 @app.post("/automate/retry", response_model=RetryResponse)
 async def retry_failed():
+    if not _automate_limiter.allow():
+        rate_limited_total.labels(endpoint="/automate/retry", reason="run_frequency").inc()
+        raise HTTPException(
+            429,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": str(int(_automate_limiter.retry_after()) + 1)},
+        )
+
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
@@ -339,8 +378,11 @@ async def retry_failed():
     for entity_row in retryable:
         raw = entity_row.get("entity_data")
         if not raw:
-            await db.increment_retry_count(entity_row["id"])
-            still_failing += 1
+            new_status = await db.increment_retry_count(entity_row["id"])
+            if new_status == "dead_letter":
+                dead_lettered += 1
+            else:
+                still_failing += 1
             continue
 
         try:
@@ -348,16 +390,23 @@ async def retry_failed():
                 entities=[raw],
                 run_id=f"retry_{entity_row['id']}",
                 dry_run=False,
+                suppress_failure_logging=True,
             )
             if result["entities_failed"] == 0:
                 await db.delete_failed_entity(entity_row["id"])
                 succeeded += 1
             else:
-                await db.increment_retry_count(entity_row["id"])
-                still_failing += 1
+                new_status = await db.increment_retry_count(entity_row["id"])
+                if new_status == "dead_letter":
+                    dead_lettered += 1
+                else:
+                    still_failing += 1
         except Exception:
-            await db.increment_retry_count(entity_row["id"])
-            still_failing += 1
+            new_status = await db.increment_retry_count(entity_row["id"])
+            if new_status == "dead_letter":
+                dead_lettered += 1
+            else:
+                still_failing += 1
 
     return RetryResponse(
         retried=len(retryable),
