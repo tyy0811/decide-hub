@@ -120,3 +120,23 @@ execute -> log) have genuinely different shapes. They share the real common
 ground: `telemetry/db.py`, `telemetry/metrics.py`, Postgres schema, and
 CI gates. The shared infrastructure is the connection, not a base class
 that papers over different decision shapes.
+
+## 13. Policy replay for change control
+
+A policy change that improves average reward by 2% but changes 40% of
+individual decisions needs human review — the aggregate metric hides
+distributional shift.
+
+The replay runner (`src/evaluation/replay.py`) loads 100 frozen
+context-action pairs and re-runs them through the candidate rules config.
+It measures Total Variation Distance (TVD) between the baseline and
+candidate action distributions. CI fails if TVD exceeds 0.15 (15% shift).
+
+TVD provides the single-number CI gate. Per-action deltas provide the
+debugging output (which specific actions shifted and by how much).
+Per-entity changes list exactly which entities would receive different
+treatment, with the candidate rule that fired.
+
+Set `ALLOW_DRIFT=true` to override for intentional rule changes after
+human review. This escape hatch exists because not all drift is bad —
+but all drift should be acknowledged.
