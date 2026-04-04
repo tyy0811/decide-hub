@@ -15,6 +15,8 @@ from src.policies.data import load_ratings, temporal_split
 from src.policies.popularity import PopularityPolicy
 from src.policies.scorer import ScorerPolicy
 from src.policies.bandit import EpsilonGreedyPolicy
+from src.policies.retrieval import RetrievalPolicy
+import polars as pl
 from src.automations.crawler import fetch_entities
 from src.automations.orchestrator import run_automation_pipeline
 from src.serving.schemas import (
@@ -76,6 +78,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Warning: EpsilonGreedyPolicy failed to fit: {e}")
 
+    try:
+        import json
+        from pathlib import Path
+        corpus_path = Path("tests/fixtures/retrieval_corpus.json")
+        if corpus_path.exists():
+            corpus_data = json.loads(corpus_path.read_text())
+            doc_rows = [
+                {"doc_id": d["id"], "title": d["title"], "text": d["text"]}
+                for d in corpus_data["documents"]
+            ]
+            retrieval = RetrievalPolicy(corpus_path=corpus_path).fit(
+                pl.DataFrame(doc_rows)
+            )
+            _policies["retrieval"] = retrieval
+    except Exception as e:
+        print(f"Warning: RetrievalPolicy failed to fit: {e}")
+
     # Try connecting to Postgres (schema sync happens in init_pool)
     dsn = os.environ.get("DATABASE_URL", _DEFAULT_DSN)
     try:
@@ -129,10 +148,15 @@ async def rank(req: RankRequest):
         candidates = policy._item_ids
     elif hasattr(policy, "_all_items"):
         candidates = policy._all_items
+    elif hasattr(policy, "_doc_ids"):
+        candidates = policy._doc_ids
     else:
         raise HTTPException(500, "No candidate items available")
 
-    scored = policy.score(candidates, context={"user_id": req.user_id})
+    ctx = {"user_id": req.user_id}
+    if req.query:
+        ctx["query"] = req.query
+    scored = policy.score(candidates, context=ctx)
     top_k = scored[:req.k]
 
     api_latency.labels(endpoint="/rank").observe(time.time() - start)

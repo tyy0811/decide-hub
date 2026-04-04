@@ -88,3 +88,19 @@ def test_rank_bandit_policy(client):
     else:
         # Bandit may fail to load if data unavailable — 404 is acceptable
         assert resp.status_code == 404
+
+
+def test_rank_retrieval_policy(client):
+    """Retrieval policy returns ranked documents via /rank endpoint."""
+    resp = client.post("/rank", json={
+        "user_id": 0,
+        "policy": "retrieval",
+        "query": "machine learning",
+        "k": 5,
+    })
+    if resp.status_code == 200:
+        data = resp.json()
+        assert data["policy"] == "retrieval"
+        assert len(data["items"]) == 5
+    else:
+        assert resp.status_code == 404

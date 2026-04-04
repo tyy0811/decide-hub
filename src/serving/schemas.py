@@ -9,7 +9,8 @@ class RankRequest(BaseModel):
     user_id: int
     candidate_items: list[int] = Field(default_factory=list, description="Item IDs to rank. If empty, ranks all items.")
     k: int = Field(default=10, ge=1, le=100)
-    policy: str = Field(default="popularity", pattern="^(popularity|scorer|bandit)$")
+    policy: str = Field(default="popularity", pattern="^(popularity|scorer|bandit|retrieval)$")
+    query: str | None = Field(default=None, description="Query string for retrieval policies")
 
 
 class ScoredItem(BaseModel):
@@ -26,7 +27,7 @@ class RankResponse(BaseModel):
 # --- Evaluation ---
 
 class EvaluateRequest(BaseModel):
-    policy: str = Field(default="popularity", pattern="^(popularity|scorer|bandit)$")
+    policy: str = Field(default="popularity", pattern="^(popularity|scorer|bandit|retrieval)$")
     k: int = Field(default=10, ge=1, le=100)
 
 
