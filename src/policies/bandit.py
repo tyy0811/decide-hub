@@ -37,15 +37,23 @@ class EpsilonGreedyPolicy(BasePolicy):
         self._all_items: list[int] = []
 
     def fit(self, train_data: pl.DataFrame) -> "EpsilonGreedyPolicy":
-        """Warm-start arm estimates from training data average ratings."""
+        """Warm-start arm estimates from training data ratings, normalized to [0, 1].
+
+        MovieLens ratings are 1-5; update() will receive binary 0/1 rewards.
+        Normalizing (rating - 1) / 4 maps both scales to [0, 1] so mixing
+        warm-start and online updates doesn't corrupt estimates.
+        """
         stats = train_data.group_by("movie_id").agg([
             pl.col("rating").sum().alias("total_rating"),
             pl.len().alias("count"),
         ])
         for row in stats.iter_rows(named=True):
             item_id = row["movie_id"]
-            self.arm_rewards[item_id] = row["total_rating"]
-            self.arm_counts[item_id] = row["count"]
+            # Normalize sum: each rating r contributes (r - 1) / 4 instead of r
+            count = row["count"]
+            raw_sum = row["total_rating"]
+            self.arm_rewards[item_id] = (raw_sum - count) / 4.0
+            self.arm_counts[item_id] = count
         self._all_items = list(self.arm_counts.keys())
         return self
 
@@ -78,13 +86,20 @@ class EpsilonGreedyPolicy(BasePolicy):
         self.arm_rewards[item_id] = self.arm_rewards.get(item_id, 0.0) + reward
         self.arm_counts[item_id] = self.arm_counts.get(item_id, 0) + 1
 
+    def _exploit_scores(self, items: list[int]) -> list[tuple[int, float]]:
+        """Pure exploitation ranking — no epsilon check, no RNG, no mutation."""
+        scored = []
+        for item in items:
+            count = self.arm_counts.get(item, 0)
+            estimate = self.arm_rewards[item] / count if count > 0 else 0.0
+            scored.append((item, estimate))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored
+
     def evaluate(self, test_data: pl.DataFrame, k: int = 10) -> dict[str, float]:
-        """Offline evaluation with epsilon=0 (pure exploitation)."""
+        """Offline evaluation using pure exploitation (no epsilon mutation)."""
         all_items = self._all_items
         users = test_data["user_id"].unique().to_list()
-
-        old_epsilon = self.epsilon
-        self.epsilon = 0.0
 
         ndcg_scores = []
         mrr_scores = []
@@ -94,14 +109,12 @@ class EpsilonGreedyPolicy(BasePolicy):
             user_test = test_data.filter(pl.col("user_id") == user_id)
             relevant = set(user_test["movie_id"].to_list())
 
-            ranked = self.score(all_items, context={"user_id": user_id})
+            ranked = self._exploit_scores(all_items)
             ranked_ids = [item_id for item_id, _ in ranked]
 
             ndcg_scores.append(ndcg_at_k(ranked_ids, relevant, k))
             mrr_scores.append(mrr(ranked_ids, relevant))
             hit_scores.append(hit_rate_at_k(ranked_ids, relevant, k))
-
-        self.epsilon = old_epsilon
 
         return {
             f"ndcg@{k}": sum(ndcg_scores) / len(ndcg_scores),

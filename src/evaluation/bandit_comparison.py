@@ -43,7 +43,11 @@ def run_bandit_comparison(
     """
     rng = np.random.default_rng(seed)
 
-    # Environment: fixed item features, reward = Bernoulli(sigmoid(ctx @ item))
+    # Environment: per-arm bias so arms have different marginal expected rewards.
+    # bias[i] = evenly spaced from -1.5 to +1.5, giving the best arm ~82%
+    # reward probability and the worst ~18%. Without bias, ctx ~ N(0,I) makes
+    # every arm average ~0.5 by symmetry, leaving nothing for the bandit to learn.
+    arm_bias = np.linspace(-1.5, 1.5, n_items)
     item_features = rng.standard_normal((n_items, n_features))
 
     # --- Warmup: estimate best static arm ---
@@ -51,7 +55,7 @@ def run_bandit_comparison(
     warmup_counts = np.zeros(n_items)
     for _ in range(warmup_rounds):
         ctx = rng.standard_normal(n_features)
-        scores = ctx @ item_features.T
+        scores = ctx @ item_features.T + arm_bias
         reward_probs = 1.0 / (1.0 + np.exp(-scores))
         arm = rng.integers(n_items)
         reward = float(rng.binomial(1, reward_probs[arm]))
@@ -74,7 +78,7 @@ def run_bandit_comparison(
 
     for _ in range(n_rounds):
         ctx = rng.standard_normal(n_features)
-        scores = ctx @ item_features.T
+        scores = ctx @ item_features.T + arm_bias
         reward_probs = 1.0 / (1.0 + np.exp(-scores))
 
         # Static: always pick static_arm

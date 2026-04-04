@@ -92,3 +92,26 @@ def test_update_new_item():
 
     scored = bandit.score([99])
     assert scored[0] == (99, 4.0)  # (5+3)/2
+
+
+def test_evaluate_does_not_mutate_epsilon():
+    """evaluate() must not change self.epsilon (concurrency-safe)."""
+    import polars as pl
+
+    bandit = EpsilonGreedyPolicy(epsilon=0.08)
+    # Minimal training data for fit()
+    train = pl.DataFrame({
+        "user_id": [1, 1, 2],
+        "movie_id": [10, 20, 10],
+        "rating": [4.0, 3.0, 5.0],
+    })
+    test = pl.DataFrame({
+        "user_id": [1],
+        "movie_id": [20],
+        "rating": [3.0],
+    })
+    bandit.fit(train)
+
+    assert bandit.epsilon == 0.08
+    bandit.evaluate(test, k=2)
+    assert bandit.epsilon == 0.08  # must be unchanged
