@@ -139,6 +139,9 @@ async def rank(req: RankRequest):
     if not policy:
         raise HTTPException(404, f"Policy '{req.policy}' not loaded")
 
+    if req.policy == "retrieval" and not req.query:
+        raise HTTPException(422, "Retrieval policy requires a 'query' field")
+
     # Determine candidate items
     if req.candidate_items:
         candidates = req.candidate_items

@@ -104,3 +104,14 @@ def test_rank_retrieval_policy(client):
         assert len(data["items"]) == 5
     else:
         assert resp.status_code == 404
+
+
+def test_rank_retrieval_without_query_returns_422(client):
+    """Retrieval policy without query returns 422, not 500."""
+    resp = client.post("/rank", json={
+        "user_id": 0,
+        "policy": "retrieval",
+        "k": 5,
+    })
+    # 422 if retrieval loaded, 404 if not — either way, not 500
+    assert resp.status_code in (422, 404)

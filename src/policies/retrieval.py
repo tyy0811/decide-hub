@@ -13,7 +13,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from src.policies.base import BasePolicy
-from src.evaluation.naive import ndcg_at_k, mrr, hit_rate_at_k
+from src.evaluation.naive import graded_ndcg_at_k, mrr, hit_rate_at_k
 
 _DEFAULT_CORPUS = Path("tests/fixtures/retrieval_corpus.json")
 
@@ -91,11 +91,13 @@ class RetrievalPolicy(BasePolicy):
         hit_scores = []
 
         for q in queries:
-            relevant = set(int(doc_id) for doc_id in q["relevant"])
+            # Graded relevance for NDCG, binary set for MRR/HitRate
+            grades = {int(doc_id): grade for doc_id, grade in q["relevant"].items()}
+            relevant = set(grades.keys())
             ranked = self.score(all_doc_ids, context={"query": q["text"]})
             ranked_ids = [doc_id for doc_id, _ in ranked]
 
-            ndcg_scores.append(ndcg_at_k(ranked_ids, relevant, k))
+            ndcg_scores.append(graded_ndcg_at_k(ranked_ids, grades, k))
             mrr_scores.append(mrr(ranked_ids, relevant))
             hit_scores.append(hit_rate_at_k(ranked_ids, relevant, k))
 
