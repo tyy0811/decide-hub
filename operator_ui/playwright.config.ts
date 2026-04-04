@@ -7,6 +7,9 @@ const projectRoot = resolve(__dirname, "..");
 const venvPython = resolve(projectRoot, ".venv/bin/python");
 const python = existsSync(venvPython) ? venvPython : "python3";
 
+// E2E tests live in operator_ui/e2e/ (colocated with the UI they test)
+// rather than tests/e2e/ — keeps Playwright config paths simple and
+// groups frontend tests with frontend code.
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60000,

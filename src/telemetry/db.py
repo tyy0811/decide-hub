@@ -146,12 +146,34 @@ async def get_approval_by_id(approval_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+_VALID_APPROVAL_STATUSES = ("approved", "rejected")
+
+
 async def update_approval_status(approval_id: int, status: str) -> None:
+    if status not in _VALID_APPROVAL_STATUSES:
+        raise ValueError(f"Invalid approval status: {status!r}. Must be one of {_VALID_APPROVAL_STATUSES}")
     pool = get_pool()
     await pool.execute(
         "UPDATE pending_approvals SET status = $1 WHERE id = $2",
         status, approval_id,
     )
+
+
+async def claim_approval(approval_id: int, new_status: str) -> dict | None:
+    """Atomically transition approval from 'pending' to new_status.
+
+    Returns the approval row if transition succeeded, None if not found
+    or already acted on. Eliminates TOCTOU race vs separate read+check+update.
+    """
+    if new_status not in _VALID_APPROVAL_STATUSES:
+        raise ValueError(f"Invalid approval status: {new_status!r}. Must be one of {_VALID_APPROVAL_STATUSES}")
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "UPDATE pending_approvals SET status = $1 "
+        "WHERE id = $2 AND status = 'pending' RETURNING *",
+        new_status, approval_id,
+    )
+    return dict(row) if row else None
 
 
 # --- Failed entities ---
@@ -172,18 +194,29 @@ async def log_failed_entity(
     )
 
 
+_retry_config: dict | None = None
+
+
+def _reset_retry_config() -> None:
+    """Clear cached retry config. Call in test teardown to prevent test infection."""
+    global _retry_config
+    _retry_config = None
+
+
 def _get_max_retries(error_type: str) -> int:
-    """Look up max_retries for an error type from retry config."""
-    config_path = Path(__file__).resolve().parent.parent / "automations" / "retry_config.yml"
-    try:
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        policies = config.get("retry_policies", {})
-        if error_type in policies:
-            return policies[error_type].get("max_retries", 0)
-        return policies.get("default", {}).get("max_retries", 0)
-    except Exception:
-        return 0
+    """Look up max_retries for an error type from retry config (cached)."""
+    global _retry_config
+    if _retry_config is None:
+        config_path = Path(__file__).resolve().parent.parent / "automations" / "retry_config.yml"
+        try:
+            with open(config_path) as f:
+                _retry_config = yaml.safe_load(f)
+        except Exception:
+            return 0
+    policies = _retry_config.get("retry_policies", {})
+    if error_type in policies:
+        return policies[error_type].get("max_retries", 0)
+    return policies.get("default", {}).get("max_retries", 0)
 
 
 async def get_failed_entities(run_id: str | None = None) -> list[dict]:
@@ -212,15 +245,19 @@ async def get_retryable_entities() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-async def increment_retry_count(entity_row_id: int) -> None:
-    """Increment retry count. If at max, set status to dead_letter."""
+async def increment_retry_count(entity_row_id: int) -> str:
+    """Increment retry count. If at max, set status to dead_letter.
+
+    Returns the new status ('failed' or 'dead_letter').
+    """
     pool = get_pool()
-    await pool.execute(
+    row = await pool.fetchrow(
         "UPDATE failed_entities SET retry_count = retry_count + 1, "
         "status = CASE WHEN retry_count + 1 >= max_retries THEN 'dead_letter' ELSE 'failed' END "
-        "WHERE id = $1",
+        "WHERE id = $1 RETURNING status",
         entity_row_id,
     )
+    return row["status"] if row else "failed"
 
 
 async def delete_failed_entity(entity_row_id: int) -> None:

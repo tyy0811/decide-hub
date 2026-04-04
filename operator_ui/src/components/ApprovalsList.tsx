@@ -17,6 +17,7 @@ export default function ApprovalsList() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchApprovals = () => {
     fetch(`${API_BASE}/approvals`)
@@ -35,14 +36,16 @@ export default function ApprovalsList() {
 
   const handleAction = async (id: number, action: "approve" | "reject") => {
     setActing(id);
+    setError(null);
     try {
       const resp = await fetch(`${API_BASE}/approvals/${id}/${action}`, {
         method: "POST",
       });
-      if (!resp.ok) throw new Error(`${resp.status}`);
+      if (!resp.ok) throw new Error(`Failed to ${action} (${resp.status})`);
       fetchApprovals();
-    } catch {
-      // Silently handle — UI will refresh
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Failed to ${action}`);
+      fetchApprovals();
     } finally {
       setActing(null);
     }
@@ -61,6 +64,9 @@ export default function ApprovalsList() {
         )}
       </h2>
       <p className="text-xs text-slate-400 mb-3">Actions that require human review before execution. Triggered by permission rules.</p>
+      {error && (
+        <p className="text-xs text-red-600 dark:text-red-400 mb-2">{error}</p>
+      )}
       <div className="space-y-2">
         {approvals.map((a) => (
           <div

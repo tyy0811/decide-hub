@@ -64,7 +64,9 @@ def test_approve_endpoint_404():
     """Approve nonexistent approval returns 404."""
     with TestClient(app) as client:
         resp = client.post("/approvals/99999/approve")
-        # May be 503 (no DB) or 404 — depends on test environment
+        # 404 when DB is available (approval not found).
+        # 503 when DB is unavailable (CI without Postgres).
+        # Both are correct rejections — the request cannot succeed.
         assert resp.status_code in (404, 503)
 
 
@@ -72,4 +74,5 @@ def test_reject_endpoint_404():
     """Reject nonexistent approval returns 404."""
     with TestClient(app) as client:
         resp = client.post("/approvals/99999/reject")
+        # See test_approve_endpoint_404 for rationale.
         assert resp.status_code in (404, 503)

@@ -33,6 +33,7 @@ async def run_automation_pipeline(
     run_id: str,
     dry_run: bool = False,
     shadow_rules_config: str | None = None,
+    suppress_failure_logging: bool = False,
 ) -> dict:
     """Run the full automation pipeline on a list of entities.
 
@@ -175,7 +176,7 @@ async def run_automation_pipeline(
         except Exception as e:
             failed += 1
             failed_entities_counter.labels(error_type=type(e).__name__).inc()
-            if not dry_run:
+            if not dry_run and not suppress_failure_logging:
                 try:
                     await db.log_failed_entity(
                         entity_id=entity_id,

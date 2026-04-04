@@ -36,8 +36,10 @@ test.describe("Approval Actions E2E", () => {
       .click();
 
     // Step 5: Verify approval disappears from pending list
-    // Wait for refetch
-    await page.waitForTimeout(1000);
+    // Poll until the approved item is removed from the UI
+    await expect(
+      page.locator(`[data-testid="approve-${pendingApproval.id}"]`)
+    ).toHaveCount(0, { timeout: 5000 });
     const remainingApprovals = await request.get(`${API_BASE}/approvals`);
     const remainingData = await remainingApprovals.json();
     const stillPending = remainingData.approvals.filter(

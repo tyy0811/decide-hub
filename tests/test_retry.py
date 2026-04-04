@@ -40,8 +40,10 @@ async def test_retry_config_sets_max_retries(db_pool):
 
     failed = await db.get_failed_entities(run_id="test_retry_config")
     assert len(failed) == 1
-    # Should have max_retries set (default from config for the error type)
-    assert "max_retries" in failed[0]
+    # role=None triggers AttributeError during enrichment.
+    # Not in retry_config.yml — falls through to default.max_retries = 0.
+    assert failed[0]["max_retries"] == 0
+    assert failed[0]["status"] == "dead_letter"
 
 
 @pytest.mark.asyncio
