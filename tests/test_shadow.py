@@ -1,6 +1,5 @@
 """Tests for shadow mode — candidate rules run alongside production."""
 
-import tempfile
 import yaml
 import pytest
 
@@ -8,11 +7,11 @@ from src.automations.orchestrator import run_automation_pipeline
 from tests.mock_lead_api import MOCK_LEADS
 
 
-def _write_shadow_config(rules: list[dict]) -> str:
+def _write_shadow_config(tmp_path, rules: list[dict]) -> str:
     """Write a temporary rules config and return its path."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        yaml.dump({"rules": rules}, f)
-        return f.name
+    path = tmp_path / "shadow_rules.yml"
+    path.write_text(yaml.dump({"rules": rules}))
+    return str(path)
 
 
 @pytest.mark.asyncio
@@ -33,14 +32,14 @@ async def test_shadow_mode_no_divergence(db_pool):
 
 
 @pytest.mark.asyncio
-async def test_shadow_mode_detects_divergence(db_pool):
+async def test_shadow_mode_detects_divergence(db_pool, tmp_path):
     """Different rules config produces nonzero shadow TVD."""
     from src.telemetry import db as db_module
     db_module._pool = db_pool
 
     # Route everything to priority_outreach — diverges from the varied
     # production actions (standard_sequence, flag_for_review, delete_lead, etc.)
-    shadow_path = _write_shadow_config([
+    shadow_path = _write_shadow_config(tmp_path, [
         {"name": "catch_all", "condition": "true", "action": "priority_outreach"},
     ])
 
@@ -56,14 +55,14 @@ async def test_shadow_mode_detects_divergence(db_pool):
 
 
 @pytest.mark.asyncio
-async def test_shadow_mode_writes_to_db(db_pool):
+async def test_shadow_mode_writes_to_db(db_pool, tmp_path):
     """Shadow outcomes are written to shadow_outcomes table."""
     from src.telemetry import db as db_module
     db_module._pool = db_pool
 
     # Route everything to priority_outreach — leads 3-4 get different
     # production actions so will show as diverged
-    shadow_path = _write_shadow_config([
+    shadow_path = _write_shadow_config(tmp_path, [
         {"name": "catch_all", "condition": "true", "action": "priority_outreach"},
     ])
 

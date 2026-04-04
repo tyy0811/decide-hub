@@ -78,6 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_shadow_outcomes_run ON shadow_outcomes(run_id);
 CREATE TABLE IF NOT EXISTS action_audit_log (
     id SERIAL PRIMARY KEY,
     entity_id TEXT,
+    -- No FK: audit events may reference synthetic run_ids (e.g., approval_123)
     run_id TEXT,
     actor TEXT NOT NULL,
     action_type TEXT NOT NULL,

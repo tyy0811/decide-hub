@@ -4,6 +4,7 @@ Per-entity error handling: one failure doesn't kill the run.
 Idempotency: DB unique constraint on (entity_id, processed_date) prevents duplicates.
 """
 
+import sys
 import time
 from collections import Counter
 from datetime import date
@@ -82,8 +83,8 @@ async def run_automation_pipeline(
                             production_rule=rule_name,
                             shadow_rule=shadow_rule,
                         )
-                    except Exception:
-                        pass  # Don't let shadow logging kill the run
+                    except Exception as e:
+                        print(f"Shadow outcome logging failed: {e}", file=sys.stderr)
 
             # Check permissions
             permission = check_permission(action, permissions=permissions)
