@@ -25,6 +25,7 @@ graph TB
     subgraph Ranking["Ranking Policies"]
         pop["PopularityPolicy"]
         scorer["ScorerPolicy (LightGBM)"]
+        bandit["EpsilonGreedyPolicy"]
         flow1["fit → score(context) → evaluate"]
     end
 
@@ -92,8 +93,21 @@ make test    # Run test suite
 |--------|---------|-----|------------|
 | Popularity | 0.0177 | 0.0473 | 0.0954 |
 | LightGBM LambdaRank | 0.0017 | 0.0119 | 0.0080 |
+| Epsilon-Greedy Bandit (e=0.1) | 0.0001 | 0.0078 | 0.0003 |
 
-Scorer evaluated on a 500-user test split. Uses only 6 aggregate features (user/item means, counts, stds) without collaborative filtering signals — underperformance vs popularity is expected. See [DECISIONS.md](DECISIONS.md) #3 for why this is expected and where the value is.
+Scorer and bandit evaluated on a 500-user test split. The bandit warm-starts from normalized average ratings (no collaborative filtering features) — offline metrics reflect the quality of the warm-start, not the bandit's online learning ability. See [DECISIONS.md](DECISIONS.md) #3 and #15.
+
+## Bandit Comparison (Simulated Online)
+
+| Policy | Cumulative Reward (10K rounds) |
+|--------|-------------------------------|
+| Static best-arm | 3755 |
+| Epsilon-greedy (e=0.1) | 8424 |
+
+The static policy picks a single best arm estimated from a warmup phase
+and never adapts. The bandit explores with 10% probability and exploits
+its learned estimates otherwise. See [DECISIONS.md](DECISIONS.md) #15 for
+why the bandit uses in-memory arm state and what the evaluation measures.
 
 ## Counterfactual Evaluation (Synthetic Data)
 
@@ -156,7 +170,7 @@ docker compose down             # Stop all
 This repo is designed to grow from static ranking to contextual bandits to full policy learning:
 
 - Collaborative filtering features for scorer (user-item interaction matrix)
-- Contextual bandits (exploration/exploitation with safety bounds)
+- ~~Contextual bandits (exploration/exploitation with safety bounds)~~ (shipped in Phase 2 — epsilon-greedy with online simulation)
 - ~~Policy replay + change control~~ (shipped in Phase 1)
 - KPI/experimentation layer (A/B test simulation, confidence intervals)
 - Action executor (trigger real side-effects for approved actions)
