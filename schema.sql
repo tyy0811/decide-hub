@@ -73,3 +73,20 @@ CREATE TABLE IF NOT EXISTS shadow_outcomes (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_shadow_outcomes_run ON shadow_outcomes(run_id);
+
+-- Audit trail: every action decision logged with reason
+CREATE TABLE IF NOT EXISTS action_audit_log (
+    id SERIAL PRIMARY KEY,
+    entity_id TEXT,
+    run_id TEXT,
+    actor TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    action TEXT NOT NULL,
+    rule_matched TEXT,
+    permission_result TEXT,
+    reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON action_audit_log(entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_run ON action_audit_log(run_id);
+CREATE INDEX IF NOT EXISTS idx_audit_type ON action_audit_log(action_type);

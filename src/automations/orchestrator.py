@@ -14,10 +14,17 @@ from src.automations.rules import apply_rules, load_rules_config
 from src.automations.permissions import check_permission, load_permissions_config
 from src.evaluation.comparison import compute_action_deltas, total_variation_distance
 from src.telemetry import db
+from src.telemetry.audit import log_audit_event
 from src.telemetry.metrics import (
     automation_runs, rule_hits, permission_results,
     failed_entities_counter, enrichment_duration,
 )
+
+_PERMISSION_TO_AUDIT = {
+    "allowed": "execute",
+    "blocked": "block",
+    "approval_required": "queue_approval",
+}
 
 
 async def run_automation_pipeline(
@@ -81,6 +88,18 @@ async def run_automation_pipeline(
             # Check permissions
             permission = check_permission(action, permissions=permissions)
             permission_results.labels(result=permission).inc()
+
+            if not dry_run:
+                await log_audit_event(
+                    entity_id=entity_id,
+                    run_id=run_id,
+                    actor="system",
+                    action_type=_PERMISSION_TO_AUDIT.get(permission, "unknown"),
+                    action=action,
+                    rule_matched=rule_name,
+                    permission_result=permission,
+                    reason=None,
+                )
 
             if dry_run:
                 action_counts[action] += 1
