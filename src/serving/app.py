@@ -14,6 +14,7 @@ from src.policies.base import BasePolicy
 from src.policies.data import load_ratings, temporal_split
 from src.policies.popularity import PopularityPolicy
 from src.policies.scorer import ScorerPolicy
+from src.policies.bandit import EpsilonGreedyPolicy
 from src.automations.crawler import fetch_entities
 from src.automations.orchestrator import run_automation_pipeline
 from src.serving.schemas import (
@@ -69,6 +70,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Warning: ScorerPolicy failed to fit: {e}")
 
+    try:
+        bandit = EpsilonGreedyPolicy(epsilon=0.1).fit(_train_data)
+        _policies["bandit"] = bandit
+    except Exception as e:
+        print(f"Warning: EpsilonGreedyPolicy failed to fit: {e}")
+
     # Try connecting to Postgres (schema sync happens in init_pool)
     dsn = os.environ.get("DATABASE_URL", _DEFAULT_DSN)
     try:
@@ -120,6 +127,8 @@ async def rank(req: RankRequest):
         candidates = list(policy.item_counts.keys())
     elif hasattr(policy, "_item_ids"):
         candidates = policy._item_ids
+    elif hasattr(policy, "_all_items"):
+        candidates = policy._all_items
     else:
         raise HTTPException(500, "No candidate items available")
 

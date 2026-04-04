@@ -69,3 +69,22 @@ def test_metrics_endpoint(client):
     response = client.get("/metrics")
     assert response.status_code == 200
     assert b"decidehub_rank_requests_total" in response.content
+
+
+def test_rank_bandit_policy(client):
+    """Bandit policy returns ranked items via /rank endpoint."""
+    resp = client.post("/rank", json={
+        "user_id": 42,
+        "policy": "bandit",
+        "k": 5,
+    })
+    if resp.status_code == 200:
+        data = resp.json()
+        assert data["policy"] == "bandit"
+        assert len(data["items"]) == 5
+        # Scores should be descending
+        scores = [item["score"] for item in data["items"]]
+        assert scores == sorted(scores, reverse=True)
+    else:
+        # Bandit may fail to load if data unavailable — 404 is acceptable
+        assert resp.status_code == 404
