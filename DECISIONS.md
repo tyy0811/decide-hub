@@ -156,3 +156,37 @@ variable shadow mode exists to test: rule changes.
 Shadow data is stored in `shadow_outcomes` with a per-entity row and a
 `diverged` boolean for cheap filtering. Distribution comparison uses the
 same TVD + per-action delta functions as the offline replay runner.
+
+## 15. Epsilon-greedy bandit with in-memory arm state
+
+The bandit maintains per-arm reward estimates (`arm_rewards`, `arm_counts`)
+in memory on the policy instance, updated via `update(item_id, reward)`.
+Server restart resets all estimates to the warm-start values from training
+data. Persistent bandit state (Redis, database) is a V3 concern — V2
+demonstrates the algorithm and evaluation, not production statefulness.
+
+Epsilon is hard-capped at `max_epsilon=0.10`. This limits exploration to
+10% of interactions, analogous to how the permissions layer limits what
+actions the automation pipeline can take. The cap is configurable but
+exists to prevent unbounded random behavior.
+
+Warm-start normalizes MovieLens ratings from [1, 5] to [0, 1] via
+`(rating - 1) / 4`. The `update()` method validates that rewards are in
+[0, 1], enforcing scale consistency at the mutation boundary so mixing
+warm-start and online feedback never corrupts estimates.
+
+Evaluation uses `_exploit_scores()` — a pure method that ranks by arm
+estimates without touching `self.epsilon` or the RNG. This avoids mutating
+the live singleton in `_policies` during `/evaluate` requests, which would
+otherwise cause concurrent `/rank` requests to observe epsilon=0 and stop
+exploring. The non-mutating path also eliminates the need for
+try/finally restoration.
+
+The bandit comparison module simulates online interaction rounds against
+a static best-arm baseline. The environment uses per-arm bias (linspace
+-3 to +3) so arms have genuinely different expected rewards — without
+bias, symmetry makes every arm average ~0.5, leaving nothing to learn.
+The static policy picks a single arm with the highest estimated marginal
+reward (from a warmup phase) and never adapts. The comparison produces
+cumulative reward curves: the bandit's ability to learn gives it a
+substantial advantage (+4669 reward over 10K rounds in the default config).
