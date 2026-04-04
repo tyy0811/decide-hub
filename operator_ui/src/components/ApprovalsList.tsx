@@ -16,8 +16,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export default function ApprovalsList() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<number | null>(null);
 
-  useEffect(() => {
+  const fetchApprovals = () => {
     fetch(`${API_BASE}/approvals`)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
@@ -26,7 +27,26 @@ export default function ApprovalsList() {
       .then((data) => setApprovals(data.approvals ?? []))
       .catch(() => setApprovals([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchApprovals();
   }, []);
+
+  const handleAction = async (id: number, action: "approve" | "reject") => {
+    setActing(id);
+    try {
+      const resp = await fetch(`${API_BASE}/approvals/${id}/${action}`, {
+        method: "POST",
+      });
+      if (!resp.ok) throw new Error(`${resp.status}`);
+      fetchApprovals();
+    } catch {
+      // Silently handle — UI will refresh
+    } finally {
+      setActing(null);
+    }
+  };
 
   if (loading) return <div className="text-slate-400">Loading approvals...</div>;
 
@@ -53,9 +73,33 @@ export default function ApprovalsList() {
                 <span className="mx-2 text-slate-400">&rarr;</span>
                 <span className="font-medium text-gray-900 dark:text-white">{a.proposed_action}</span>
               </div>
-              <span className="text-xs bg-orange-200 text-orange-800 dark:bg-orange-900 dark:text-orange-300 px-2 py-0.5 rounded">
-                {a.status}
-              </span>
+              <div className="flex gap-2">
+                {a.status === "pending" && (
+                  <>
+                    <button
+                      onClick={() => handleAction(a.id, "approve")}
+                      disabled={acting === a.id}
+                      className="text-xs px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                      data-testid={`approve-${a.id}`}
+                    >
+                      {acting === a.id ? "..." : "Approve"}
+                    </button>
+                    <button
+                      onClick={() => handleAction(a.id, "reject")}
+                      disabled={acting === a.id}
+                      className="text-xs px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                      data-testid={`reject-${a.id}`}
+                    >
+                      {acting === a.id ? "..." : "Reject"}
+                    </button>
+                  </>
+                )}
+                {a.status !== "pending" && (
+                  <span className="text-xs bg-orange-200 text-orange-800 dark:bg-orange-900 dark:text-orange-300 px-2 py-0.5 rounded">
+                    {a.status}
+                  </span>
+                )}
+              </div>
             </div>
             {a.reason && (
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{a.reason}</p>
