@@ -8,7 +8,6 @@ from src.evaluation.naive import ndcg_at_k, mrr, hit_rate_at_k
 class PopularityPolicy(BasePolicy):
     def __init__(self):
         self.item_counts: dict[int, int] = {}
-        self._context: dict = {}
 
     def fit(self, train_data: pl.DataFrame) -> "PopularityPolicy":
         counts = train_data.group_by("movie_id").agg(pl.len().alias("count"))
@@ -18,10 +17,7 @@ class PopularityPolicy(BasePolicy):
         ))
         return self
 
-    def observe(self, context: dict) -> None:
-        self._context = context
-
-    def score(self, items: list[int]) -> list[tuple[int, float]]:
+    def score(self, items: list[int], context: dict | None = None) -> list[tuple[int, float]]:
         scored = [(item, float(self.item_counts.get(item, 0))) for item in items]
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
@@ -38,8 +34,7 @@ class PopularityPolicy(BasePolicy):
             user_test = test_data.filter(pl.col("user_id") == user_id)
             relevant = set(user_test["movie_id"].to_list())
 
-            self.observe({"user_id": user_id})
-            ranked = self.score(all_items)
+            ranked = self.score(all_items, context={"user_id": user_id})
             ranked_ids = [item_id for item_id, _ in ranked]
 
             ndcg_scores.append(ndcg_at_k(ranked_ids, relevant, k))

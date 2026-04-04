@@ -27,7 +27,6 @@ class ScorerPolicy(BasePolicy):
         self.item_features: pl.DataFrame | None = None
         self._item_feature_matrix: np.ndarray | None = None
         self._item_ids: list[int] | None = None
-        self._context: dict = {}
 
     def fit(self, train_data: pl.DataFrame) -> "ScorerPolicy":
         features = build_features(train_data)
@@ -65,35 +64,36 @@ class ScorerPolicy(BasePolicy):
         self.model.fit(X, y, group=group_sizes)
         return self
 
-    def observe(self, context: dict) -> None:
-        self._context = context
-
-    def score(self, items: list[int]) -> list[tuple[int, float]]:
+    def score(self, items: list[int], context: dict | None = None) -> list[tuple[int, float]]:
         """Score candidate items via batch prediction.
 
-        Builds one feature matrix for all items and calls predict once.
+        Args:
+            items: Candidate item IDs.
+            context: Must contain {"user_id": int}. Thread-safe.
         """
         if self.model is None:
             raise RuntimeError("Policy not fitted. Call fit() first.")
 
-        user_id = self._context.get("user_id")
+        user_id = (context or {}).get("user_id")
         user_row = self.user_features.filter(pl.col("user_id") == user_id)
 
         if len(user_row) == 0:
+            # Unknown user — zero user features (cold-start fallback)
             user_vals = np.zeros(len(_USER_FEATURE_COLS))
         else:
             user_vals = user_row.select(_USER_FEATURE_COLS).to_numpy()[0]
 
         # Build item feature matrix for requested items
-        item_set = set(items)
-        item_indices = [i for i, iid in enumerate(self._item_ids) if iid in item_set]
+        request_set = set(items)
+        item_indices = [i for i, iid in enumerate(self._item_ids) if iid in request_set]
         known_ids = [self._item_ids[i] for i in item_indices]
         known_features = self._item_feature_matrix[item_indices]
 
-        # Unknown items get zero features
-        unknown_ids = [iid for iid in items if iid not in item_set or iid not in set(known_ids)]
+        # Unknown items (not in training data) get score -inf
+        known_id_set = set(known_ids)
+        unknown_ids = [iid for iid in items if iid not in known_id_set]
 
-        # Broadcast user features across all items: shape (n_items, n_user_features + n_item_features)
+        # Broadcast user features across all items
         n_known = len(known_ids)
         if n_known > 0:
             user_block = np.tile(user_vals, (n_known, 1))
@@ -103,7 +103,6 @@ class ScorerPolicy(BasePolicy):
         else:
             results = []
 
-        # Unknown items get score -inf so they sort last
         for iid in unknown_ids:
             results.append((iid, float("-inf")))
 
@@ -122,8 +121,7 @@ class ScorerPolicy(BasePolicy):
             user_test = test_data.filter(pl.col("user_id") == user_id)
             relevant = set(user_test["movie_id"].to_list())
 
-            self.observe({"user_id": user_id})
-            ranked = self.score(all_items)
+            ranked = self.score(all_items, context={"user_id": user_id})
             ranked_ids = [item_id for item_id, _ in ranked]
 
             ndcg_scores.append(ndcg_at_k(ranked_ids, relevant, k))

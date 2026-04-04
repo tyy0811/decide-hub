@@ -1,5 +1,6 @@
 """FastAPI application — /rank, /evaluate, /automate, /approvals, /runs, /metrics endpoints."""
 
+import asyncio
 import os
 import time
 import uuid
@@ -116,8 +117,7 @@ async def rank(req: RankRequest):
     else:
         raise HTTPException(500, "No candidate items available")
 
-    policy.observe({"user_id": req.user_id})
-    scored = policy.score(candidates)
+    scored = policy.score(candidates, context={"user_id": req.user_id})
     top_k = scored[:req.k]
 
     api_latency.labels(endpoint="/rank").observe(time.time() - start)
@@ -135,7 +135,7 @@ async def evaluate(req: EvaluateRequest):
     if not policy:
         raise HTTPException(404, f"Policy '{req.policy}' not loaded")
 
-    metrics = policy.evaluate(_test_data, k=req.k)
+    metrics = await asyncio.to_thread(policy.evaluate, _test_data, req.k)
 
     # Log evaluation results to Postgres for audit trail
     if _db_available:

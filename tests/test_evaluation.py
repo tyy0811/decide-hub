@@ -1,3 +1,4 @@
+import pytest
 from src.evaluation.naive import ndcg_at_k, mrr, hit_rate_at_k
 
 
@@ -198,3 +199,15 @@ def test_clipped_ips_clip_bound():
 
     # Clipped should be smaller because the large weight is capped
     assert clipped < unclipped
+
+
+def test_ips_zero_propensity_raises():
+    """IPS with zero propensity raises ValueError, not ZeroDivisionError."""
+    with pytest.raises(ValueError, match="Propensity must be > 0"):
+        ips_estimate([1.0], [0.0], [0.5])
+
+
+def test_clipped_ips_zero_propensity_raises():
+    """Clipped IPS with zero propensity raises ValueError."""
+    with pytest.raises(ValueError, match="Propensity must be > 0"):
+        clipped_ips_estimate([1.0], [0.0], [0.5])

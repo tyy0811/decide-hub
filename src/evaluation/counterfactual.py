@@ -17,7 +17,11 @@ def ips_estimate(
     Args:
         rewards: Observed rewards under logging policy.
         propensities: Logging policy probabilities P_0(a|x) for chosen actions.
+            Must be strictly positive.
         target_probs: Target policy probabilities P_t(a|x) for chosen actions.
+
+    Raises:
+        ValueError: If any propensity is <= 0.
     """
     n = len(rewards)
     if n == 0:
@@ -25,6 +29,8 @@ def ips_estimate(
 
     total = 0.0
     for r, p0, pt in zip(rewards, propensities, target_probs):
+        if p0 <= 0:
+            raise ValueError(f"Propensity must be > 0, got {p0}")
         weight = pt / p0
         total += weight * r
 
@@ -40,6 +46,9 @@ def clipped_ips_estimate(
     """Clipped IPS — cap importance weights to reduce variance.
 
     Same as IPS but weight = min(target/logging, clip).
+
+    Raises:
+        ValueError: If any propensity is <= 0.
     """
     n = len(rewards)
     if n == 0:
@@ -47,6 +56,8 @@ def clipped_ips_estimate(
 
     total = 0.0
     for r, p0, pt in zip(rewards, propensities, target_probs):
+        if p0 <= 0:
+            raise ValueError(f"Propensity must be > 0, got {p0}")
         weight = min(pt / p0, clip)
         total += weight * r
 

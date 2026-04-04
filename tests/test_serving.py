@@ -55,10 +55,17 @@ def test_health_endpoint(client):
 
 
 def test_automate_endpoint_dry_run(client):
-    """POST /automate with dry_run returns plan without executing."""
+    """POST /automate with dry_run=True returns 502 when source is unreachable."""
     response = client.post("/automate", json={
-        "source_url": "http://mock/leads",
+        "source_url": "http://localhost:19999/nonexistent",
         "dry_run": True,
     })
-    # May fail if mock server not running — test with expected status
-    assert response.status_code in (200, 502, 503)
+    # Source unreachable — should return 502, not crash
+    assert response.status_code == 502
+
+
+def test_metrics_endpoint(client):
+    """GET /metrics returns Prometheus exposition format."""
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert b"decidehub_rank_requests_total" in response.content

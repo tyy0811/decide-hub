@@ -9,8 +9,8 @@ from collections import Counter
 from datetime import date
 
 from src.automations.enrichment import enrich_entity
-from src.automations.rules import apply_rules
-from src.automations.permissions import check_permission
+from src.automations.rules import apply_rules, load_rules_config
+from src.automations.permissions import check_permission, load_permissions_config
 from src.telemetry import db
 from src.telemetry.metrics import (
     automation_runs, rule_hits, permission_results,
@@ -28,6 +28,8 @@ async def run_automation_pipeline(
     Returns run summary dict.
     """
     today = date.today()
+    rules = load_rules_config()
+    permissions = load_permissions_config()
 
     if not dry_run:
         await db.create_run(run_id)
@@ -46,12 +48,12 @@ async def run_automation_pipeline(
             enriched = enrich_entity(raw_entity, today=today)
             enrichment_duration.observe(time.monotonic() - enrich_start)
 
-            # Apply rules
-            action, rule_name = apply_rules(enriched)
+            # Apply rules (configs loaded once, not per entity)
+            action, rule_name = apply_rules(enriched, rules=rules)
             rule_hits.labels(action=action).inc()
 
             # Check permissions
-            permission = check_permission(action)
+            permission = check_permission(action, permissions=permissions)
             permission_results.labels(result=permission).inc()
 
             if dry_run:

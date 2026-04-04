@@ -7,7 +7,7 @@ import polars as pl
 class BasePolicy(ABC):
     """Base class for ranking policies.
 
-    Interface: fit -> observe -> score -> evaluate.
+    Interface: fit -> score(items, context) -> evaluate.
     Outcome logging belongs to the telemetry layer (db.log_outcome),
     not the policy — policies decide what to recommend, not how to persist.
     """
@@ -18,13 +18,14 @@ class BasePolicy(ABC):
         ...
 
     @abstractmethod
-    def observe(self, context: dict) -> None:
-        """Observe user context features before scoring."""
-        ...
+    def score(self, items: list[int], context: dict | None = None) -> list[tuple[int, float]]:
+        """Score candidate items. Returns [(item_id, score)] sorted descending.
 
-    @abstractmethod
-    def score(self, items: list[int]) -> list[tuple[int, float]]:
-        """Score candidate items. Returns [(item_id, score)] sorted descending."""
+        Args:
+            items: Candidate item IDs to score.
+            context: User/request context (e.g. {"user_id": 42}).
+                     Thread-safe: passed per-call, not stored on the instance.
+        """
         ...
 
     @abstractmethod

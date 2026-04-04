@@ -281,7 +281,7 @@ async def test_orchestrator_idempotent_rerun(db_pool):
     await run_automation_pipeline(entities=entities, run_id="test_idem_001", dry_run=False)
     await run_automation_pipeline(entities=entities, run_id="test_idem_002", dry_run=False)
 
-    pool = await db_module.get_pool()
+    pool = db_module.get_pool()
     outcomes = await pool.fetch(
         "SELECT * FROM automation_outcomes WHERE entity_id = 'lead_001'"
     )
@@ -324,7 +324,7 @@ async def test_orchestrator_dry_run(db_pool):
     assert result["entities_processed"] == 2
 
     # Dry run should NOT write to automation_outcomes
-    pool = await db_module.get_pool()
+    pool = db_module.get_pool()
     outcomes = await pool.fetch(
         "SELECT * FROM automation_outcomes WHERE run_id = 'test_dry_run'"
     )
@@ -359,7 +359,7 @@ async def test_orchestrator_blocked_action_logged(db_pool):
     )
 
     assert result["entities_processed"] == 1
-    pool = await db_module.get_pool()
+    pool = db_module.get_pool()
     outcomes = await pool.fetch(
         "SELECT * FROM automation_outcomes WHERE run_id = 'test_run_blocked'"
     )

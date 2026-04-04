@@ -27,7 +27,7 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
     )
 
 
-async def get_pool() -> asyncpg.Pool:
+def get_pool() -> asyncpg.Pool:
     if _pool is None:
         raise RuntimeError("Database pool not initialized. Call init_pool() first.")
     return _pool
@@ -41,7 +41,7 @@ async def close_pool() -> None:
 
 
 async def run_schema(schema_path: str | None = None) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     path = Path(schema_path) if schema_path else _PROJECT_ROOT / "schema.sql"
     sql = path.read_text()
     async with pool.acquire() as conn:
@@ -51,7 +51,7 @@ async def run_schema(schema_path: str | None = None) -> None:
 # --- Outcomes (ranking) ---
 
 async def log_outcome(user_id: int, action: str, reward: float, policy_id: str) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     await pool.execute(
         "INSERT INTO outcomes (user_id, action, reward, policy_id) "
         "VALUES ($1, $2, $3, $4)",
@@ -62,7 +62,7 @@ async def log_outcome(user_id: int, action: str, reward: float, policy_id: str) 
 # --- Automation runs ---
 
 async def create_run(run_id: str) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     await pool.execute(
         "INSERT INTO automation_runs (run_id, status) VALUES ($1, 'running')",
         run_id,
@@ -75,7 +75,7 @@ async def complete_run(
     entities_failed: int,
     action_distribution: dict,
 ) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     await pool.execute(
         "UPDATE automation_runs SET status = 'completed', "
         "entities_processed = $2, entities_failed = $3, "
@@ -87,7 +87,7 @@ async def complete_run(
 
 
 async def get_runs(limit: int = 20) -> list[dict]:
-    pool = await get_pool()
+    pool = get_pool()
     rows = await pool.fetch(
         "SELECT * FROM automation_runs ORDER BY started_at DESC LIMIT $1",
         limit,
@@ -105,7 +105,7 @@ async def log_automation_outcome(
     rule_matched: str | None,
     permission_result: str,
 ) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     await pool.execute(
         "INSERT INTO automation_outcomes "
         "(run_id, entity_id, enriched_fields, action_taken, rule_matched, permission_result) "
@@ -120,7 +120,7 @@ async def log_automation_outcome(
 async def create_approval(
     entity_id: str, proposed_action: str, reason: str | None = None,
 ) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     await pool.execute(
         "INSERT INTO pending_approvals (entity_id, proposed_action, reason) "
         "VALUES ($1, $2, $3)",
@@ -129,7 +129,7 @@ async def create_approval(
 
 
 async def get_pending_approvals() -> list[dict]:
-    pool = await get_pool()
+    pool = get_pool()
     rows = await pool.fetch(
         "SELECT * FROM pending_approvals WHERE status = 'pending' "
         "ORDER BY created_at DESC",
@@ -142,7 +142,7 @@ async def get_pending_approvals() -> list[dict]:
 async def log_failed_entity(
     entity_id: str, run_id: str, error_type: str, error_message: str,
 ) -> None:
-    pool = await get_pool()
+    pool = get_pool()
     await pool.execute(
         "INSERT INTO failed_entities (entity_id, run_id, error_type, error_message) "
         "VALUES ($1, $2, $3, $4)",
@@ -151,7 +151,7 @@ async def log_failed_entity(
 
 
 async def get_failed_entities(run_id: str | None = None) -> list[dict]:
-    pool = await get_pool()
+    pool = get_pool()
     if run_id:
         rows = await pool.fetch(
             "SELECT * FROM failed_entities WHERE run_id = $1 "
@@ -181,7 +181,7 @@ async def insert_outcome_idempotent(
     (entity_id, processed_date). Returns True if the row was inserted,
     False if it was a duplicate.
     """
-    pool = await get_pool()
+    pool = get_pool()
     result = await pool.execute(
         "INSERT INTO automation_outcomes "
         "(run_id, entity_id, enriched_fields, action_taken, rule_matched, permission_result) "

@@ -9,7 +9,7 @@ async def test_log_outcome_and_retrieve(db_pool):
     await db.log_outcome(user_id=1, action="movie_42", reward=5.0, policy_id="popularity_v1")
     await db.log_outcome(user_id=1, action="movie_99", reward=3.0, policy_id="popularity_v1")
 
-    pool = await db.get_pool()
+    pool = db.get_pool()
     rows = await pool.fetch("SELECT * FROM outcomes WHERE user_id = 1")
     assert len(rows) == 2
     assert rows[0]["policy_id"] == "popularity_v1"
@@ -78,7 +78,7 @@ async def test_idempotent_outcome_insert(db_pool):
     )
     assert inserted2 is False
 
-    pool = await db.get_pool()
+    pool = db.get_pool()
     rows = await pool.fetch(
         "SELECT * FROM automation_outcomes WHERE entity_id = 'ent_X'"
     )

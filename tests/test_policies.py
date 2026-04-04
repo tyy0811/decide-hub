@@ -180,8 +180,7 @@ def test_scorer_fit_and_score():
     ratings = make_scorer_ratings()
     policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(ratings)
 
-    policy.observe({"user_id": 1})
-    scored = policy.score(list(range(1, 21)))
+    scored = policy.score(list(range(1, 21)), context={"user_id": 1})
     assert len(scored) == 20
     assert all(isinstance(s, float) for _, s in scored)
     scores = [s for _, s in scored]
@@ -193,10 +192,19 @@ def test_scorer_predictions_non_constant():
     ratings = make_scorer_ratings()
     policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(ratings)
 
-    policy.observe({"user_id": 1})
-    scored = policy.score(list(range(1, 21)))
+    scored = policy.score(list(range(1, 21)), context={"user_id": 1})
     scores = [s for _, s in scored]
     assert len(set(scores)) > 1, f"All scores identical: {scores}"
+
+
+def test_scorer_cold_start_unknown_user():
+    """Unknown user gets scores (zero user features fallback), not an error."""
+    ratings = make_scorer_ratings()
+    policy = ScorerPolicy(num_leaves=8, n_estimators=50).fit(ratings)
+
+    scored = policy.score(list(range(1, 21)), context={"user_id": 99999})
+    assert len(scored) == 20
+    assert all(isinstance(s, float) for _, s in scored)
 
 
 def test_scorer_distinguishes_users():
@@ -206,11 +214,8 @@ def test_scorer_distinguishes_users():
 
     items = list(range(1, 21))
 
-    policy.observe({"user_id": 2})  # even user — prefers low movie IDs
-    scores_even = [s for _, s in policy.score(items)]
-
-    policy.observe({"user_id": 3})  # odd user — prefers high movie IDs
-    scores_odd = [s for _, s in policy.score(items)]
+    scores_even = [s for _, s in policy.score(items, context={"user_id": 2})]
+    scores_odd = [s for _, s in policy.score(items, context={"user_id": 3})]
 
     assert scores_even != scores_odd, "Scorer produces identical scores for different users"
 
