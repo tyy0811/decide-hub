@@ -212,3 +212,21 @@ The corpus lives in `tests/fixtures/` because it is a test fixture, not
 production data. The app loads it conditionally (`if corpus_path.exists()`)
 and skips registration when absent. A production retrieval system would
 load documents from a database or index — that is out of scope for V2.
+
+## 17. Bootstrap CIs without p-values for experimentation
+
+The experiment engine reports confidence intervals and effect sizes
+only — no p-values. CIs communicate the same information (whether the
+interval excludes zero tells you significance) while also communicating
+effect magnitude and uncertainty range. P-values encourage binary
+yes/no thinking that discards useful information about effect size.
+
+The bootstrap CI implementation is validated with a coverage test:
+generate data with a known true effect, run 200 experiments, verify
+95% CIs contain the true effect ~95% of the time. This proves the
+implementation is calibrated, not just that it returns two numbers.
+
+The confidence level flows end-to-end: `run_experiment()` stores it in
+the result dict, and `render_markdown()` reads it from there. This
+prevents metadata drift where a caller runs an 80% CI but the report
+labels it as 95%.
