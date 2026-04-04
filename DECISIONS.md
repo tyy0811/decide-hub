@@ -88,8 +88,9 @@ prevents duplicate processing on retry without race conditions.
 ## 9. Next.js for the operator dashboard
 
 Next.js provides React component architecture, TypeScript, Tailwind CSS, and
-file-based routing out of the box. The four dashboard components (RunsTable,
-ApprovalsList, ActionChart, ErrorSummary) are read-only in V1.
+file-based routing out of the box. The dashboard has seven components:
+three interactive (HealthStatus, RankingDemo, EvalMetrics) and four
+read-only (RunsTable, ApprovalsList, ActionChart, ErrorSummary).
 
 All components guard against API errors (503 when DB unavailable) by checking
 response.ok before parsing payloads.
@@ -113,7 +114,7 @@ A per-connection JSONB codec ensures JSONB columns always return `dict`
 
 ## 12. Separate interfaces for ranking and automation modules
 
-The ranking policy interface (fit -> observe -> score -> evaluate) and
+The ranking policy interface (fit -> score(items, context) -> evaluate) and
 the automation pipeline (collect -> enrich -> rules -> permissions ->
 execute -> log) have genuinely different shapes. They share the real common
 ground: `telemetry/db.py`, `telemetry/metrics.py`, Postgres schema, and

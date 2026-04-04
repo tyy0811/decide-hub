@@ -24,7 +24,7 @@ graph TB
     subgraph Ranking["Ranking Policies"]
         pop["PopularityPolicy"]
         scorer["ScorerPolicy (LightGBM)"]
-        flow1["fit → observe → score → evaluate"]
+        flow1["fit → score(context) → evaluate"]
     end
 
     subgraph Automation["Automation Pipeline"]
