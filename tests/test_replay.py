@@ -1,12 +1,7 @@
 """Tests for policy replay runner."""
 
-import json
-import tempfile
-from pathlib import Path
-
 import yaml
 
-from src.automations.enrichment import EnrichedEntity
 from src.evaluation.replay import replay_contexts, ReplayResult
 
 
@@ -45,7 +40,7 @@ def test_replay_no_drift():
     assert len(result.per_entity_changes) == 0
 
 
-def test_replay_detects_drift():
+def test_replay_detects_drift(tmp_path):
     """Modified rules config produces nonzero TVD and per-entity changes."""
     contexts = _make_contexts()
 
@@ -55,11 +50,10 @@ def test_replay_detects_drift():
             {"name": "catch_all", "condition": "true", "action": "standard_sequence"},
         ]
     }
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        yaml.dump(modified_rules, f)
-        tmp_path = f.name
+    rules_file = tmp_path / "modified_rules.yml"
+    rules_file.write_text(yaml.dump(modified_rules))
 
-    result = replay_contexts(contexts, tmp_path)
+    result = replay_contexts(contexts, rules_file)
     assert result.tvd > 0.0
     assert len(result.per_entity_changes) == 2
     for change in result.per_entity_changes:
@@ -69,7 +63,7 @@ def test_replay_detects_drift():
         assert "entity_id" in change
 
 
-def test_replay_result_action_deltas():
+def test_replay_result_action_deltas(tmp_path):
     """Action deltas show directional shift."""
     contexts = _make_contexts()
 
@@ -78,10 +72,9 @@ def test_replay_result_action_deltas():
             {"name": "catch_all", "condition": "true", "action": "standard_sequence"},
         ]
     }
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
-        yaml.dump(modified_rules, f)
-        tmp_path = f.name
+    rules_file = tmp_path / "modified_rules.yml"
+    rules_file.write_text(yaml.dump(modified_rules))
 
-    result = replay_contexts(contexts, tmp_path)
+    result = replay_contexts(contexts, rules_file)
     assert result.action_deltas["standard_sequence"] > 0
     assert result.action_deltas["priority_outreach"] < 0

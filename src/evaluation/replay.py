@@ -6,6 +6,7 @@ Used by CI regression gate and manual change review.
 
 from dataclasses import dataclass, field
 from collections import Counter
+from pathlib import Path
 
 from src.automations.enrichment import EnrichedEntity
 from src.automations.rules import apply_rules, load_rules_config
@@ -20,7 +21,7 @@ class ReplayResult:
 
 
 def replay_contexts(
-    contexts: list[dict], rules_config_path: str,
+    contexts: list[dict], rules_config_path: str | Path,
 ) -> ReplayResult:
     """Replay frozen contexts through a candidate rules config.
 
