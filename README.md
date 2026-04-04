@@ -17,6 +17,7 @@ graph TB
         evaluate["/evaluate"]
         automate["/automate"]
         approvals["/approvals"]
+        retry["/automate/retry"]
         runs["/runs"]
         metrics["/metrics"]
     end
@@ -33,8 +34,16 @@ graph TB
         rules["Rules (YAML config)"]
         permissions["Permissions (YAML config)"]
         execute["Execute or Queue"]
+        shadow["Shadow Mode"]
 
         crawler --> enrichment --> rules --> permissions --> execute
+        rules -.-> shadow
+    end
+
+    subgraph Safety["Safety & Change Control"]
+        replay["Policy Replay (CI gate)"]
+        audit["Audit Trail"]
+        rate_limit["Rate Limiting"]
     end
 
     subgraph Telemetry["Shared Telemetry Layer"]
@@ -47,16 +56,20 @@ graph TB
         approvals_list["ApprovalsList"]
         action_chart["ActionChart"]
         error_summary["ErrorSummary"]
+        shadow_cmp["ShadowComparison"]
     end
 
     rank --> Ranking
     evaluate --> Ranking
     automate --> Automation
+    retry --> Automation
     approvals --> pg
     runs --> pg
 
     Ranking --> Telemetry
     Automation --> Telemetry
+    Automation --> Safety
+    Safety --> Telemetry
     Dashboard --> API
 ```
 
@@ -102,16 +115,23 @@ Source API -> Crawler -> Enrichment -> Rules -> Permissions -> Execute/Queue -> 
 - **Rules:** YAML-configured routing (operator-editable, validated at load)
 - **Permissions:** Separate safety policy (allow/block/approval_required)
 - **Dry run:** `POST /automate {"source_url": "...", "dry_run": true}` previews per-entity results
-- **Failure handling:** Per-entity error isolation, `failed_entities` table
+- **Failure handling:** Per-entity error isolation, `failed_entities` table with configurable retry
 - **Idempotency:** DB unique constraint prevents duplicate processing on retry
+- **Shadow mode:** Run candidate rules alongside production, compare distributions (TVD + per-action deltas)
+- **Policy replay:** Frozen-context regression testing — CI fails if action distribution drifts >15%
+- **Audit trail:** Every permission decision logged with actor, action type, and reason
+- **Approve/reject:** Human-in-the-loop for high-risk actions via `/approvals` API + dashboard buttons
+- **Retry + dead-letter:** Configurable per-error retry policy, entities exceeding max retries move to dead-letter
+- **Rate limiting:** Sliding-window rate limit (5 req/60s), entity cap (100/run), backpressure detection
 
 ## Operator Dashboard
 
 Next.js + React + Tailwind dashboard at `:3000`:
 - Recent automation runs with status
-- Pending approvals (actions requiring human review)
+- Pending approvals with approve/reject buttons
 - Action distribution chart
 - Failed entities grouped by error type
+- Shadow mode comparison (production vs candidate rule distributions)
 
 ## Development
 
@@ -137,5 +157,6 @@ This repo is designed to grow from static ranking to contextual bandits to full 
 
 - Collaborative filtering features for scorer (user-item interaction matrix)
 - Contextual bandits (exploration/exploitation with safety bounds)
-- Policy replay + change control (regression testing for policy changes)
+- ~~Policy replay + change control~~ (shipped in Phase 1)
 - KPI/experimentation layer (A/B test simulation, confidence intervals)
+- Action executor (trigger real side-effects for approved actions)
