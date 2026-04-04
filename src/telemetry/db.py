@@ -137,6 +137,22 @@ async def get_pending_approvals() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_approval_by_id(approval_id: int) -> dict | None:
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "SELECT * FROM pending_approvals WHERE id = $1", approval_id,
+    )
+    return dict(row) if row else None
+
+
+async def update_approval_status(approval_id: int, status: str) -> None:
+    pool = get_pool()
+    await pool.execute(
+        "UPDATE pending_approvals SET status = $1 WHERE id = $2",
+        status, approval_id,
+    )
+
+
 # --- Failed entities ---
 
 async def log_failed_entity(

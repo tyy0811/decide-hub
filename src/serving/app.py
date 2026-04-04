@@ -20,11 +20,12 @@ from src.serving.schemas import (
     RankRequest, RankResponse, ScoredItem,
     EvaluateRequest, EvaluateResponse,
     AutomateRequest, AutomateResponse, EntityResult,
-    ApprovalsResponse, ApprovalItem,
+    ApprovalsResponse, ApprovalItem, ApprovalActionResponse,
     RunsResponse, RunItem,
     FailedEntitiesResponse, FailedEntityItem,
 )
 from src.telemetry import db
+from src.telemetry.audit import log_audit_event
 from src.telemetry.metrics import get_metrics, get_content_type, rank_requests, api_latency
 
 _DEFAULT_DSN = "postgresql://decide_hub:decide_hub@localhost:5432/decide_hub"
@@ -201,6 +202,84 @@ async def get_approvals():
             )
             for r in rows
         ]
+    )
+
+
+@app.post("/approvals/{approval_id}/approve", response_model=ApprovalActionResponse)
+async def approve_action(approval_id: int):
+    if not _db_available:
+        raise HTTPException(503, "Database not available")
+
+    approval = await db.get_approval_by_id(approval_id)
+    if not approval:
+        raise HTTPException(404, f"Approval {approval_id} not found")
+    if approval["status"] != "pending":
+        raise HTTPException(409, f"Approval {approval_id} is already {approval['status']}")
+
+    await db.update_approval_status(approval_id, "approved")
+
+    # Create a synthetic run for the approval execution
+    approval_run_id = f"approval_{approval_id}"
+    await db.create_run(approval_run_id)
+    await db.complete_run(approval_run_id, entities_processed=1, entities_failed=0, action_distribution={approval["proposed_action"]: 1})
+
+    await db.insert_outcome_idempotent(
+        run_id=approval_run_id,
+        entity_id=approval["entity_id"],
+        enriched_fields={},
+        action_taken=approval["proposed_action"],
+        rule_matched=None,
+        permission_result="approved",
+    )
+
+    await log_audit_event(
+        entity_id=approval["entity_id"],
+        run_id=None,
+        actor="operator",
+        action_type="approve",
+        action=approval["proposed_action"],
+        rule_matched=None,
+        permission_result="approved",
+        reason=None,
+    )
+
+    return ApprovalActionResponse(
+        id=approval_id,
+        entity_id=approval["entity_id"],
+        proposed_action=approval["proposed_action"],
+        status="approved",
+    )
+
+
+@app.post("/approvals/{approval_id}/reject", response_model=ApprovalActionResponse)
+async def reject_action(approval_id: int):
+    if not _db_available:
+        raise HTTPException(503, "Database not available")
+
+    approval = await db.get_approval_by_id(approval_id)
+    if not approval:
+        raise HTTPException(404, f"Approval {approval_id} not found")
+    if approval["status"] != "pending":
+        raise HTTPException(409, f"Approval {approval_id} is already {approval['status']}")
+
+    await db.update_approval_status(approval_id, "rejected")
+
+    await log_audit_event(
+        entity_id=approval["entity_id"],
+        run_id=None,
+        actor="operator",
+        action_type="reject",
+        action=approval["proposed_action"],
+        rule_matched=None,
+        permission_result="rejected",
+        reason=None,
+    )
+
+    return ApprovalActionResponse(
+        id=approval_id,
+        entity_id=approval["entity_id"],
+        proposed_action=approval["proposed_action"],
+        status="rejected",
     )
 
 

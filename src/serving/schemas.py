@@ -78,6 +78,13 @@ class ApprovalsResponse(BaseModel):
     approvals: list[ApprovalItem]
 
 
+class ApprovalActionResponse(BaseModel):
+    id: int
+    entity_id: str
+    proposed_action: str
+    status: str
+
+
 # --- Runs ---
 
 class RunItem(BaseModel):
