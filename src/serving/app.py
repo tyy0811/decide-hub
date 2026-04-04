@@ -167,6 +167,7 @@ async def automate(req: AutomateRequest):
         entities=entities,
         run_id=run_id,
         dry_run=req.dry_run,
+        shadow_rules_config=req.shadow_rules_config,
     )
 
     return AutomateResponse(
@@ -177,6 +178,8 @@ async def automate(req: AutomateRequest):
         action_distribution=result["action_distribution"],
         dry_run=result["dry_run"],
         results=result.get("results", []),
+        shadow_tvd=result.get("shadow_tvd"),
+        shadow_action_deltas=result.get("shadow_action_deltas"),
     )
 
 

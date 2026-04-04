@@ -7,10 +7,12 @@ Idempotency: DB unique constraint on (entity_id, processed_date) prevents duplic
 import time
 from collections import Counter
 from datetime import date
+from pathlib import Path
 
 from src.automations.enrichment import enrich_entity
 from src.automations.rules import apply_rules, load_rules_config
 from src.automations.permissions import check_permission, load_permissions_config
+from src.evaluation.comparison import compute_action_deltas, total_variation_distance
 from src.telemetry import db
 from src.telemetry.metrics import (
     automation_runs, rule_hits, permission_results,
@@ -22,6 +24,7 @@ async def run_automation_pipeline(
     entities: list[dict],
     run_id: str,
     dry_run: bool = False,
+    shadow_rules_config: str | None = None,
 ) -> dict:
     """Run the full automation pipeline on a list of entities.
 
@@ -30,6 +33,12 @@ async def run_automation_pipeline(
     today = date.today()
     rules = load_rules_config()
     permissions = load_permissions_config()
+    shadow_rules = (
+        load_rules_config(path=Path(shadow_rules_config))
+        if shadow_rules_config
+        else None
+    )
+    shadow_action_counts: Counter = Counter()
 
     if not dry_run:
         await db.create_run(run_id)
@@ -51,6 +60,23 @@ async def run_automation_pipeline(
             # Apply rules (configs loaded once, not per entity)
             action, rule_name = apply_rules(enriched, rules=rules)
             rule_hits.labels(action=action).inc()
+
+            # Shadow mode: run candidate rules (no permissions applied)
+            if shadow_rules is not None:
+                shadow_action, shadow_rule = apply_rules(enriched, rules=shadow_rules)
+                shadow_action_counts[shadow_action] += 1
+                if not dry_run:
+                    try:
+                        await db.insert_shadow_outcome(
+                            run_id=run_id,
+                            entity_id=entity_id,
+                            production_action=action,
+                            shadow_action=shadow_action,
+                            production_rule=rule_name,
+                            shadow_rule=shadow_rule,
+                        )
+                    except Exception:
+                        pass  # Don't let shadow logging kill the run
 
             # Check permissions
             permission = check_permission(action, permissions=permissions)
@@ -150,7 +176,7 @@ async def run_automation_pipeline(
             action_distribution=dict(action_counts),
         )
 
-    return {
+    result = {
         "run_id": run_id,
         "status": "completed",
         "entities_processed": processed,
@@ -159,3 +185,18 @@ async def run_automation_pipeline(
         "dry_run": dry_run,
         "results": results,
     }
+
+    if shadow_rules is not None:
+        production_counts: Counter = Counter()
+        for ctx_action in action_counts:
+            # Strip permission suffixes for comparison
+            base = ctx_action.split(":")[0]
+            production_counts[base] += action_counts[ctx_action]
+        result["shadow_tvd"] = total_variation_distance(
+            dict(production_counts), dict(shadow_action_counts),
+        )
+        result["shadow_action_deltas"] = compute_action_deltas(
+            dict(production_counts), dict(shadow_action_counts),
+        )
+
+    return result

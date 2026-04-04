@@ -41,6 +41,7 @@ class EvaluateResponse(BaseModel):
 class AutomateRequest(BaseModel):
     source_url: str = Field(description="URL of entity data source (mock API in tests)")
     dry_run: bool = False
+    shadow_rules_config: str | None = Field(default=None, description="Path to shadow rules YAML for candidate comparison")
 
 
 class EntityResult(BaseModel):
@@ -58,6 +59,8 @@ class AutomateResponse(BaseModel):
     action_distribution: dict[str, int]
     dry_run: bool
     results: list[EntityResult] = Field(default_factory=list)
+    shadow_tvd: float | None = None
+    shadow_action_deltas: dict[str, float] | None = None
 
 
 # --- Approvals ---

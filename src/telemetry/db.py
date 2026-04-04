@@ -192,3 +192,34 @@ async def insert_outcome_idempotent(
     )
     # asyncpg returns "INSERT 0 1" on success, "INSERT 0 0" on conflict
     return result == "INSERT 0 1"
+
+
+# --- Shadow outcomes ---
+
+async def insert_shadow_outcome(
+    run_id: str,
+    entity_id: str,
+    production_action: str,
+    shadow_action: str,
+    production_rule: str,
+    shadow_rule: str,
+) -> None:
+    pool = get_pool()
+    await pool.execute(
+        "INSERT INTO shadow_outcomes "
+        "(run_id, entity_id, production_action, shadow_action, "
+        "production_rule, shadow_rule, diverged) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        run_id, entity_id, production_action, shadow_action,
+        production_rule, shadow_rule,
+        production_action != shadow_action,
+    )
+
+
+async def get_shadow_outcomes(run_id: str) -> list[dict]:
+    pool = get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM shadow_outcomes WHERE run_id = $1 ORDER BY id",
+        run_id,
+    )
+    return [dict(r) for r in rows]

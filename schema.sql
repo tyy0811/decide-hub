@@ -59,3 +59,17 @@ CREATE INDEX IF NOT EXISTS idx_automation_outcomes_run_id ON automation_outcomes
 CREATE INDEX IF NOT EXISTS idx_automation_outcomes_entity_id ON automation_outcomes(entity_id);
 CREATE INDEX IF NOT EXISTS idx_pending_approvals_status ON pending_approvals(status);
 CREATE INDEX IF NOT EXISTS idx_failed_entities_run_id ON failed_entities(run_id);
+
+-- Shadow mode: candidate policy comparison
+CREATE TABLE IF NOT EXISTS shadow_outcomes (
+    id SERIAL PRIMARY KEY,
+    run_id TEXT REFERENCES automation_runs(run_id),
+    entity_id TEXT NOT NULL,
+    production_action TEXT NOT NULL,
+    shadow_action TEXT NOT NULL,
+    production_rule TEXT NOT NULL,
+    shadow_rule TEXT NOT NULL,
+    diverged BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_shadow_outcomes_run ON shadow_outcomes(run_id);

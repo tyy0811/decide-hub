@@ -38,7 +38,7 @@ async def db_pool():
     async with pool.acquire() as conn:
         await conn.execute(
             "TRUNCATE outcomes, automation_outcomes, pending_approvals, "
-            "failed_entities CASCADE"
+            "failed_entities, shadow_outcomes CASCADE"
         )
         await conn.execute("DELETE FROM automation_runs")
     await pool.close()
