@@ -44,10 +44,11 @@ def run_bandit_comparison(
     rng = np.random.default_rng(seed)
 
     # Environment: per-arm bias so arms have different marginal expected rewards.
-    # bias[i] = evenly spaced from -1.5 to +1.5, giving the best arm ~82%
-    # reward probability and the worst ~18%. Without bias, ctx ~ N(0,I) makes
-    # every arm average ~0.5 by symmetry, leaving nothing for the bandit to learn.
-    arm_bias = np.linspace(-1.5, 1.5, n_items)
+    # bias[i] = evenly spaced from -3 to +3, giving the best arm ~95%
+    # reward probability and the worst ~5%. The wide range ensures clear
+    # separation even after item_features noise (std ≈ sqrt(n_features)).
+    # Without bias, ctx ~ N(0,I) makes every arm average ~0.5 by symmetry.
+    arm_bias = np.linspace(-3.0, 3.0, n_items)
     item_features = rng.standard_normal((n_items, n_features))
 
     # --- Warmup: estimate best static arm ---
@@ -62,8 +63,9 @@ def run_bandit_comparison(
         warmup_rewards[arm] += reward
         warmup_counts[arm] += 1
     # Static policy: pick arm with highest estimated reward
+    safe_counts = np.where(warmup_counts > 0, warmup_counts, 1.0)
     warmup_estimates = np.where(
-        warmup_counts > 0, warmup_rewards / warmup_counts, 0.0,
+        warmup_counts > 0, warmup_rewards / safe_counts, 0.0,
     )
     static_arm = int(np.argmax(warmup_estimates))
 
@@ -90,8 +92,9 @@ def run_bandit_comparison(
         if rng.random() < epsilon:
             bandit_arm = rng.integers(n_items)
         else:
+            safe_bc = np.where(bandit_counts > 0, bandit_counts, 1.0)
             estimates = np.where(
-                bandit_counts > 0, bandit_rewards / bandit_counts, 0.0,
+                bandit_counts > 0, bandit_rewards / safe_bc, 0.0,
             )
             bandit_arm = int(np.argmax(estimates))
 

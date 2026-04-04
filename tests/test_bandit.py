@@ -72,26 +72,49 @@ def test_score_explore_mode_is_random():
 def test_update_changes_estimates():
     """update() modifies arm reward estimates."""
     bandit = EpsilonGreedyPolicy(epsilon=0.0)
-    bandit.arm_rewards = {1: 10.0, 2: 10.0}
+    bandit.arm_rewards = {1: 0.3, 2: 0.3}
     bandit.arm_counts = {1: 10, 2: 10}
 
-    # Item 2 starts at 1.0 avg, update with high rewards
-    bandit.update(2, 5.0)
-    bandit.update(2, 5.0)
+    # Item 2 starts at 0.03 avg, update with high rewards
+    bandit.update(2, 1.0)
+    bandit.update(2, 1.0)
 
     scored = bandit.score([1, 2])
-    # Item 2 now: (10 + 5 + 5) / 12 = 1.67, Item 1: 10/10 = 1.0
+    # Item 2 now: (0.3 + 1.0 + 1.0) / 12 ≈ 0.19, Item 1: 0.3/10 = 0.03
     assert scored[0][0] == 2
 
 
 def test_update_new_item():
     """update() works for items not seen during fit."""
     bandit = EpsilonGreedyPolicy(epsilon=0.0)
-    bandit.update(99, 5.0)
-    bandit.update(99, 3.0)
+    bandit.update(99, 0.8)
+    bandit.update(99, 0.6)
 
     scored = bandit.score([99])
-    assert scored[0] == (99, 4.0)  # (5+3)/2
+    assert scored[0] == (99, pytest.approx(0.7))  # (0.8+0.6)/2
+
+
+def test_score_exploit_is_stable_across_calls():
+    """With epsilon=0, repeated score() calls return identical rankings.
+
+    This is the direct no-exploration property: the exploit branch is
+    deterministic for fixed arm estimates, regardless of RNG state.
+    """
+    bandit = EpsilonGreedyPolicy(epsilon=0.0, seed=42)
+    bandit.arm_rewards = {1: 0.9, 2: 0.3, 3: 0.6}
+    bandit.arm_counts = {1: 3, 2: 3, 3: 3}
+
+    results = [bandit.score([1, 2, 3]) for _ in range(20)]
+    assert all(r == results[0] for r in results)
+
+
+def test_update_rejects_out_of_range_reward():
+    """update() raises ValueError for rewards outside [0, 1]."""
+    bandit = EpsilonGreedyPolicy(epsilon=0.0)
+    with pytest.raises(ValueError, match="outside \\[0, 1\\]"):
+        bandit.update(1, 5.0)
+    with pytest.raises(ValueError, match="outside \\[0, 1\\]"):
+        bandit.update(1, -0.1)
 
 
 def test_evaluate_does_not_mutate_epsilon():

@@ -82,7 +82,15 @@ class EpsilonGreedyPolicy(BasePolicy):
         return scored
 
     def update(self, item_id: int, reward: float) -> None:
-        """Update arm estimate with observed reward."""
+        """Update arm estimate with observed reward.
+
+        Reward must be in [0, 1] to match the normalized warm-start scale.
+        """
+        if not 0.0 <= reward <= 1.0:
+            raise ValueError(
+                f"reward {reward} outside [0, 1] — warm-start is normalized "
+                f"to this range, mixing scales corrupts estimates"
+            )
         self.arm_rewards[item_id] = self.arm_rewards.get(item_id, 0.0) + reward
         self.arm_counts[item_id] = self.arm_counts.get(item_id, 0) + 1
 

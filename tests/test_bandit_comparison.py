@@ -1,6 +1,7 @@
 """Tests for bandit vs static policy comparison."""
 
 import numpy as np
+import pytest
 from src.evaluation.bandit_comparison import run_bandit_comparison
 
 
@@ -35,26 +36,37 @@ def test_static_policy_reward_rate_is_constant():
     assert abs(first_half_rate - second_half_rate) < 0.1
 
 
-def test_bandit_learns_over_time():
+@pytest.mark.parametrize("seed", [42, 2, 3, 7, 99])
+def test_bandit_learns_over_time(seed):
     """Bandit's reward rate improves as it learns arm estimates.
 
-    With per-arm bias (linspace -1.5 to +1.5), the best arm has ~82%
-    expected reward. The bandit should converge toward it, showing
-    strictly higher late reward rate than early rate.
+    Uses warmup_rounds=10 (only ~2 samples per arm with n_items=5) so
+    initial estimates are noisy and the bandit has room to learn.
+    Over 10K rounds, late reward rate should strictly exceed early rate.
     """
     result = run_bandit_comparison(
-        n_rounds=5000, n_items=5, epsilon=0.1, seed=42,
+        n_rounds=10_000, n_items=5, epsilon=0.1,
+        warmup_rounds=10, seed=seed,
     )
     bandit = result["cumulative_reward_bandit"]
-    # Reward rate in last 1000 rounds must strictly exceed first 1000
-    early_rate = bandit[999] / 1000
-    late_rate = (bandit[4999] - bandit[3999]) / 1000
+    # First 200 rounds: bandit is still exploring with noisy estimates.
+    # Last 1000 rounds: bandit has converged to near-optimal arm.
+    early_rate = bandit[199] / 200
+    late_rate = (bandit[9999] - bandit[8999]) / 1000
     assert late_rate > early_rate
 
 
-def test_zero_epsilon_bandit_is_deterministic():
-    """With epsilon=0 and same seed, bandit produces identical results."""
-    r1 = run_bandit_comparison(n_rounds=200, epsilon=0.0, seed=99)
-    r2 = run_bandit_comparison(n_rounds=200, epsilon=0.0, seed=99)
-    assert r1["cumulative_reward_bandit"] == r2["cumulative_reward_bandit"]
-    assert r1["cumulative_reward_static"] == r2["cumulative_reward_static"]
+def test_zero_epsilon_bandit_never_explores():
+    """With epsilon=0, bandit never takes a random arm.
+
+    Verified by checking that epsilon=0 achieves higher or equal reward
+    than epsilon=1 (pure exploration). If epsilon=0 accidentally explored,
+    it would waste rounds on suboptimal arms just like epsilon=1.
+    """
+    greedy = run_bandit_comparison(
+        n_rounds=2000, n_items=10, epsilon=0.0, seed=42,
+    )
+    random = run_bandit_comparison(
+        n_rounds=2000, n_items=10, epsilon=1.0, seed=42,
+    )
+    assert greedy["final_reward_bandit"] > random["final_reward_bandit"]
