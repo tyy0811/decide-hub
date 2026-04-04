@@ -24,6 +24,8 @@ def bootstrap_ci(
     Returns:
         (lower, upper) bounds of the CI.
     """
+    if len(data) == 0:
+        raise ValueError("Cannot compute CI on empty data")
     rng = np.random.default_rng(seed)
     n = len(data)
     means = np.array([
@@ -62,6 +64,23 @@ def run_experiment(
     """
     control = np.asarray(control)
     treatment = np.asarray(treatment)
+
+    if len(control) == 0:
+        raise ValueError("Control group is empty")
+    if len(treatment) == 0:
+        raise ValueError("Treatment group is empty")
+
+    # Validate segment lengths if provided
+    if segments_control is not None and len(segments_control) != len(control):
+        raise ValueError(
+            f"segments_control length {len(segments_control)} != "
+            f"control length {len(control)}"
+        )
+    if segments_treatment is not None and len(segments_treatment) != len(treatment):
+        raise ValueError(
+            f"segments_treatment length {len(segments_treatment)} != "
+            f"treatment length {len(treatment)}"
+        )
 
     # Effect = treatment_mean - control_mean
     rng = np.random.default_rng(seed)

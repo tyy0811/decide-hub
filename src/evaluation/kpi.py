@@ -12,6 +12,10 @@ def value_proxy(
 
     Higher reward on expensive items contributes more to business value.
     """
+    if len(rewards) != len(prices):
+        raise ValueError(
+            f"rewards length {len(rewards)} != prices length {len(prices)}"
+        )
     return [r * p for r, p in zip(rewards, prices)]
 
 

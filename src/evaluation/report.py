@@ -1,8 +1,14 @@
 """Structured experiment report — JSON dict + markdown renderer."""
 
 
-def render_markdown(result: dict) -> str:
-    """Render experiment result dict as a markdown report."""
+def render_markdown(result: dict, confidence: float = 0.95) -> str:
+    """Render experiment result dict as a markdown report.
+
+    Args:
+        result: Experiment result dict from run_experiment().
+        confidence: Confidence level used to generate the CI (for labeling).
+    """
+    ci_pct = int(confidence * 100)
     lines = [
         "## Experiment Report",
         "",
@@ -11,7 +17,7 @@ def render_markdown(result: dict) -> str:
         f"| Baseline mean | {result['baseline_mean']:.4f} |",
         f"| Treatment mean | {result['treatment_mean']:.4f} |",
         f"| Lift (treatment - baseline) | {result['lift']:.4f} |",
-        f"| 95% CI | [{result['ci_lower']:.4f}, {result['ci_upper']:.4f}] |",
+        f"| {ci_pct}% CI | [{result['ci_lower']:.4f}, {result['ci_upper']:.4f}] |",
         f"| Sample size (control) | {result['sample_size_control']} |",
         f"| Sample size (treatment) | {result['sample_size_treatment']} |",
     ]
@@ -33,7 +39,7 @@ def render_markdown(result: dict) -> str:
             "",
             "### Segment Breakdown",
             "",
-            "| Segment | Lift | 95% CI | N (control) | N (treatment) |",
+            f"| Segment | Lift | {ci_pct}% CI | N (control) | N (treatment) |",
             "|---------|------|--------|-------------|---------------|",
         ])
         for seg_name, seg in sorted(result["segments"].items()):

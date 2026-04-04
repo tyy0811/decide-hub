@@ -107,6 +107,36 @@ def test_run_experiment_with_segments():
     assert "lift" in result["segments"]["A"]
 
 
+def test_bootstrap_ci_empty_raises():
+    """Empty data raises ValueError, not silent nan."""
+    with pytest.raises(ValueError, match="empty"):
+        bootstrap_ci(np.array([]))
+
+
+def test_run_experiment_empty_control_raises():
+    """Empty control group raises ValueError."""
+    with pytest.raises(ValueError, match="Control group is empty"):
+        run_experiment(np.array([]), np.array([1.0, 2.0]))
+
+
+def test_run_experiment_empty_treatment_raises():
+    """Empty treatment group raises ValueError."""
+    with pytest.raises(ValueError, match="Treatment group is empty"):
+        run_experiment(np.array([1.0, 2.0]), np.array([]))
+
+
+def test_run_experiment_segment_length_mismatch_raises():
+    """Segment labels must match data length."""
+    control = np.array([1.0, 2.0, 3.0])
+    treatment = np.array([1.0, 2.0, 3.0])
+    with pytest.raises(ValueError, match="segments_control length"):
+        run_experiment(
+            control, treatment,
+            segments_control=["A"],  # wrong length
+            segments_treatment=["A", "B", "A"],
+        )
+
+
 def test_mde_decreases_with_larger_sample():
     """Larger sample → smaller minimum detectable effect."""
     mde_small = minimum_detectable_effect(n=100, baseline_std=0.3)

@@ -1,6 +1,7 @@
 """Tests for KPI metric transforms."""
 
 import numpy as np
+import pytest
 from src.evaluation.kpi import value_proxy, retention_proxy, conversion_proxy
 
 
@@ -40,3 +41,9 @@ def test_conversion_proxy_below_threshold():
     user_rewards = [[0.1, 0.1]]
     result = conversion_proxy(user_rewards, threshold=0.5)
     assert result == [0.0]
+
+
+def test_value_proxy_length_mismatch_raises():
+    """value_proxy rejects mismatched list lengths."""
+    with pytest.raises(ValueError, match="rewards length"):
+        value_proxy([1.0, 0.0, 1.0], [10.0])

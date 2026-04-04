@@ -55,3 +55,22 @@ def test_render_markdown_with_mde():
     }
     md = render_markdown(result)
     assert "MDE" in md or "Minimum" in md
+
+
+def test_render_markdown_confidence_label():
+    """CI label reflects the actual confidence level, not hardcoded 95%."""
+    result = {
+        "baseline_mean": 0.5,
+        "treatment_mean": 0.55,
+        "lift": 0.05,
+        "ci_lower": 0.01,
+        "ci_upper": 0.09,
+        "sample_size_control": 500,
+        "sample_size_treatment": 500,
+    }
+    md_80 = render_markdown(result, confidence=0.80)
+    assert "80% CI" in md_80
+    assert "95% CI" not in md_80
+
+    md_99 = render_markdown(result, confidence=0.99)
+    assert "99% CI" in md_99
