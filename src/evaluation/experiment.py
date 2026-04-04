@@ -101,6 +101,7 @@ def run_experiment(
         "lift": float(treatment.mean() - control.mean()),
         "ci_lower": ci_lower,
         "ci_upper": ci_upper,
+        "confidence": confidence,
         "sample_size_control": len(control),
         "sample_size_treatment": len(treatment),
     }

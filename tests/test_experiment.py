@@ -66,6 +66,7 @@ def test_run_experiment_structure():
     assert "ci_upper" in result
     assert "sample_size_control" in result
     assert "sample_size_treatment" in result
+    assert result["confidence"] == 0.95
 
 
 def test_run_experiment_detects_positive_effect():

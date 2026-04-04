@@ -1,14 +1,14 @@
 """Structured experiment report — JSON dict + markdown renderer."""
 
 
-def render_markdown(result: dict, confidence: float = 0.95) -> str:
+def render_markdown(result: dict, confidence: float | None = None) -> str:
     """Render experiment result dict as a markdown report.
 
-    Args:
-        result: Experiment result dict from run_experiment().
-        confidence: Confidence level used to generate the CI (for labeling).
+    Reads confidence from result["confidence"] if present (set by
+    run_experiment). Falls back to the explicit parameter, then 0.95.
     """
-    ci_pct = int(confidence * 100)
+    conf = confidence or result.get("confidence", 0.95)
+    ci_pct = int(conf * 100)
     lines = [
         "## Experiment Report",
         "",

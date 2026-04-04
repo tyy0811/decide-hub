@@ -74,3 +74,24 @@ def test_render_markdown_confidence_label():
 
     md_99 = render_markdown(result, confidence=0.99)
     assert "99% CI" in md_99
+
+
+def test_render_markdown_reads_confidence_from_result():
+    """render_markdown reads confidence from the result dict (end-to-end).
+
+    Callers should not need to pass confidence separately — run_experiment
+    includes it in the result dict.
+    """
+    result = {
+        "baseline_mean": 0.5,
+        "treatment_mean": 0.55,
+        "lift": 0.05,
+        "ci_lower": 0.01,
+        "ci_upper": 0.09,
+        "confidence": 0.80,
+        "sample_size_control": 500,
+        "sample_size_treatment": 500,
+    }
+    md = render_markdown(result)  # no confidence param
+    assert "80% CI" in md
+    assert "95% CI" not in md
