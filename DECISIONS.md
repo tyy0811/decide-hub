@@ -190,3 +190,25 @@ The static policy picks a single arm with the highest estimated marginal
 reward (from a warmup phase) and never adapts. The comparison produces
 cumulative reward curves: the bandit's ability to learn gives it a
 substantial advantage (+4669 reward over 10K rounds in the default config).
+
+## 16. TF-IDF retrieval over FAISS for a 30-document corpus
+
+The retrieval policy uses scikit-learn's TfidfVectorizer + cosine
+similarity, not FAISS or BM25. Adding a vector index dependency to
+rank 30 documents would be engineering theater. The portfolio story is
+"same harness, different domain" — the retrieval implementation is the
+least important part. What matters is that the same BasePolicy interface,
+evaluation metrics (NDCG/MRR/HitRate), and CI regression gates apply to
+document retrieval identically to item ranking.
+
+The corpus uses graded relevance (3/2/1) with deliberate vocabulary
+overlap between documents. Evaluation uses `graded_ndcg_at_k` which
+computes gain as `2^grade - 1`, so a grade-3 document contributes 7x
+the gain of a grade-1 document. This produces realistic NDCG@10 scores
+(0.93 on the current corpus) rather than trivial 1.0. MRR and HitRate
+remain binary metrics — they are inherently binary by definition.
+
+The corpus lives in `tests/fixtures/` because it is a test fixture, not
+production data. The app loads it conditionally (`if corpus_path.exists()`)
+and skips registration when absent. A production retrieval system would
+load documents from a database or index — that is out of scope for V2.

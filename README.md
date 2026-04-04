@@ -120,6 +120,17 @@ why the bandit uses in-memory arm state and what the evaluation measures.
 Evaluated on synthetic logged-policy data where propensities are known
 by construction. See [DECISIONS.md](DECISIONS.md) #1 for methodology.
 
+## Retrieval Benchmarks (Synthetic Corpus)
+
+| Policy | NDCG@10 | MRR | HitRate@10 |
+|--------|---------|-----|------------|
+| TF-IDF Retrieval | 0.9317 | 1.0000 | 1.0000 |
+
+30-document corpus with 12 queries and graded relevance judgments (3/2/1).
+NDCG uses graded gains (2^grade - 1); MRR and HitRate are binary. Same
+BasePolicy interface, same evaluation metrics, same CI gates — different
+decision domain. See [DECISIONS.md](DECISIONS.md) #16.
+
 ## Automation Pipeline
 
 ```
