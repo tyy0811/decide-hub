@@ -5,6 +5,7 @@ import RunsTable from "@/components/RunsTable";
 import ApprovalsList from "@/components/ApprovalsList";
 import ActionChart from "@/components/ActionChart";
 import ErrorSummary from "@/components/ErrorSummary";
+import ShadowComparison from "@/components/ShadowComparison";
 
 const card = "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 shadow-lg";
 
@@ -39,6 +40,9 @@ export default function Dashboard() {
         </div>
         <div className={card}>
           <ErrorSummary />
+        </div>
+        <div className={card}>
+          <ShadowComparison />
         </div>
       </div>
     </main>

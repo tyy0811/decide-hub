@@ -140,3 +140,19 @@ treatment, with the candidate rule that fired.
 Set `ALLOW_DRIFT=true` to override for intentional rule changes after
 human review. This escape hatch exists because not all drift is bad —
 but all drift should be acknowledged.
+
+## 14. Shadow mode for safe policy deployment
+
+Shadow mode lets you evaluate a new policy on live traffic without risk —
+the candidate policy observes but never executes.
+
+The shadow fork happens after enrichment: same enriched entities go through
+both production and candidate rules. Permissions are NOT applied to the
+shadow side — shadow logs raw rule output so you can see what the candidate
+rules would route, even for actions that permissions would block. The
+comparison surface is pre-permission rule output, which isolates the
+variable shadow mode exists to test: rule changes.
+
+Shadow data is stored in `shadow_outcomes` with a per-entity row and a
+`diverged` boolean for cheap filtering. Distribution comparison uses the
+same TVD + per-action delta functions as the offline replay runner.
