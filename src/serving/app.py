@@ -19,7 +19,6 @@ from src.policies.scorer import ScorerPolicy
 from src.policies.bandit import EpsilonGreedyPolicy
 from src.policies.retrieval import RetrievalPolicy
 from src.policies.ltr_scorer import PointwiseScorerPolicy
-from src.policies.neural_scorer import NeuralScorerPolicy
 import polars as pl
 from src.automations.crawler import fetch_entities
 from src.automations.orchestrator import run_automation_pipeline
@@ -102,6 +101,7 @@ async def lifespan(app: FastAPI):
         print(f"Warning: PointwiseScorerPolicy failed to fit: {e}")
 
     try:
+        from src.policies.neural_scorer import NeuralScorerPolicy
         # Subsample for neural — per-sample BPR training is O(n_pos * epochs),
         # full MovieLens (970K rows) would hang startup for 30+ minutes.
         neural_train = _train_data.sample(n=min(10_000, len(_train_data)), seed=42)

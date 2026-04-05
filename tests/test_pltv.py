@@ -3,6 +3,8 @@
 import polars as pl
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from src.policies.labels import compute_pltv_labels
 from src.policies.pltv_scorer import PLTVScorerPolicy
 from src.policies.data import load_ratings, temporal_split

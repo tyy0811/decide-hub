@@ -16,15 +16,17 @@ dependencies = [
     "numpy>=1.26",
     "PyJWT>=2.0",
     "python-multipart>=0.0.9",
-    "posthog>=3.0",
-    "torch>=2.0",
 ]
 
 [project.optional-dependencies]
+ml = [
+    "torch>=2.0",
+    "posthog>=3.0",
+    "shap>=0.44",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
-    "shap>=0.44",
 ]
 
 [build-system]
@@ -37,3 +39,6 @@ packages = ["src"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "slow: marks tests that take >60s (neural training, pLTV label computation)",
+]

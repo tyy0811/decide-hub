@@ -3,6 +3,8 @@
 import polars as pl
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from src.policies.neural_scorer import NeuralScorerPolicy
 from src.policies.base import BasePolicy
 from src.policies.data import load_ratings, temporal_split
