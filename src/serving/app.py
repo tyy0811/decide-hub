@@ -6,7 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -460,20 +460,26 @@ async def retry_failed():
 
 
 @app.get("/anomalies", response_model=AnomalyResponse)
-async def get_anomalies(baseline_runs: int = 20, recent_runs: int = 5):
+async def get_anomalies(
+    baseline_runs: int = Query(default=20, ge=1),
+    recent_runs: int = Query(default=5, ge=1),
+):
     """Check automation outcomes for anomalies.
 
     Compares action distribution and error rates of recent runs
-    against a trailing baseline window.
+    against a trailing baseline window. Read-only endpoint — no auth
+    required (anomaly status is operational visibility, not a mutation).
     """
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
     pool = db.get_pool()
 
-    # Fetch run action distributions
+    # Single query for both distribution and error-rate analysis —
+    # ensures both checks operate on the same set of runs.
     rows = await pool.fetch(
-        "SELECT action_distribution FROM automation_runs "
+        "SELECT action_distribution, entities_failed, entities_processed "
+        "FROM automation_runs "
         "WHERE status = 'completed' AND action_distribution IS NOT NULL "
         "ORDER BY completed_at DESC LIMIT $1",
         baseline_runs + recent_runs,
@@ -485,27 +491,24 @@ async def get_anomalies(baseline_runs: int = 20, recent_runs: int = 5):
             baseline_window=0, recent_window=len(rows),
         )
 
-    # Split into recent and baseline
-    distributions = [dict(r["action_distribution"]) for r in rows]
-    recent_dists = distributions[:recent_runs]
-    baseline_dists = distributions[recent_runs:]
+    # Split into recent and baseline (same rows for both checks)
+    recent_rows = rows[:recent_runs]
+    baseline_rows = rows[recent_runs:]
 
     # Detect distribution drift
+    recent_dists = [dict(r["action_distribution"]) for r in recent_rows]
+    baseline_dists = [dict(r["action_distribution"]) for r in baseline_rows]
     drift_result = detect_distribution_drift(baseline_dists, recent_dists)
 
-    # Detect error rate spike
-    error_rows = await pool.fetch(
-        "SELECT entities_failed, entities_processed FROM automation_runs "
-        "WHERE status = 'completed' "
-        "ORDER BY completed_at DESC LIMIT $1",
-        baseline_runs + recent_runs,
-    )
-    error_rates = [
+    # Detect error rate spike (same runs)
+    recent_error_rates = [
         r["entities_failed"] / max(r["entities_processed"], 1)
-        for r in error_rows
+        for r in recent_rows
     ]
-    recent_error_rates = error_rates[:recent_runs]
-    baseline_error_rates = error_rates[recent_runs:]
+    baseline_error_rates = [
+        r["entities_failed"] / max(r["entities_processed"], 1)
+        for r in baseline_rows
+    ]
     error_result = detect_rate_spike(
         baseline_error_rates, recent_error_rates, metric_name="error_rate",
     )
@@ -517,6 +520,6 @@ async def get_anomalies(baseline_runs: int = 20, recent_runs: int = 5):
     return AnomalyResponse(
         status=status,
         anomalies=[AnomalyItem(**a) for a in all_anomalies],
-        baseline_window=len(baseline_dists),
-        recent_window=len(recent_dists),
+        baseline_window=len(baseline_rows),
+        recent_window=len(recent_rows),
     )
