@@ -19,6 +19,7 @@ from src.policies.scorer import ScorerPolicy
 from src.policies.bandit import EpsilonGreedyPolicy
 from src.policies.retrieval import RetrievalPolicy
 from src.policies.ltr_scorer import PointwiseScorerPolicy
+from src.policies.neural_scorer import NeuralScorerPolicy
 import polars as pl
 from src.automations.crawler import fetch_entities
 from src.automations.orchestrator import run_automation_pipeline
@@ -99,6 +100,12 @@ async def lifespan(app: FastAPI):
         _policies["pointwise"] = pointwise
     except Exception as e:
         print(f"Warning: PointwiseScorerPolicy failed to fit: {e}")
+
+    try:
+        neural = NeuralScorerPolicy(epochs=5, embed_dim=16).fit(_train_data)
+        _policies["neural"] = neural
+    except Exception as e:
+        print(f"Warning: NeuralScorerPolicy failed to fit: {e}")
 
     try:
         import json
