@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { authFetch } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -26,7 +27,7 @@ export default function RunDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/runs/${runId}`)
+    authFetch(`${API_BASE}/runs/${runId}`)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.json();

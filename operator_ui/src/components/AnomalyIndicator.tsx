@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -16,7 +17,7 @@ export default function AnomalyIndicator() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/anomalies`)
+    authFetch(`${API_BASE}/anomalies`)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.json();

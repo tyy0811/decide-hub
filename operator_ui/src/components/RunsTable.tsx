@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { authFetch } from "@/lib/auth";
 
 interface Run {
   run_id: string;
@@ -23,7 +24,7 @@ export default function RunsTable() {
   const bufferRef = useRef<any[]>([]);
 
   const fetchRuns = useCallback(() => {
-    fetch(`${API_BASE}/runs`)
+    authFetch(`${API_BASE}/runs`)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.json();

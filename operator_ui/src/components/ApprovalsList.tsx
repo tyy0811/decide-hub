@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getRole, authFetch } from "@/lib/auth";
 
 interface Approval {
   id: number;
@@ -12,17 +13,16 @@ interface Approval {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const OPERATOR_KEY = process.env.NEXT_PUBLIC_OPERATOR_API_KEY || "";
-const OPERATOR_NAME = process.env.NEXT_PUBLIC_OPERATOR_NAME || "dashboard";
 
 export default function ApprovalsList() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<number | null>(null);
+  const role = getRole();
   const [error, setError] = useState<string | null>(null);
 
   const fetchApprovals = () => {
-    fetch(`${API_BASE}/approvals`)
+    authFetch(`${API_BASE}/approvals`)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.json();
@@ -40,12 +40,8 @@ export default function ApprovalsList() {
     setActing(id);
     setError(null);
     try {
-      const resp = await fetch(`${API_BASE}/approvals/${id}/${action}`, {
+      const resp = await authFetch(`${API_BASE}/approvals/${id}/${action}`, {
         method: "POST",
-        headers: {
-          "X-Operator-Key": OPERATOR_KEY,
-          "X-Operator-Name": OPERATOR_NAME,
-        },
       });
       if (!resp.ok) throw new Error(`Failed to ${action} (${resp.status})`);
       fetchApprovals();
@@ -86,7 +82,7 @@ export default function ApprovalsList() {
                 <span className="font-medium text-gray-900 dark:text-white">{a.proposed_action}</span>
               </div>
               <div className="flex gap-2">
-                {a.status === "pending" && (
+                {role === "operator" && a.status === "pending" && (
                   <>
                     <button
                       onClick={() => handleAction(a.id, "approve")}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -15,7 +16,7 @@ export default function PoliciesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/evaluate/results`)
+    authFetch(`${API_BASE}/evaluate/results`)
       .then((r) => r.json())
       .then((data) => setResults(data.results ?? []))
       .catch(() => setResults([]))
