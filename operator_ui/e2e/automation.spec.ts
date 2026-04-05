@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { getAuthToken, authHeaders } from "./auth-helpers";
 
 const API_BASE = "http://localhost:8000";
 const MOCK_SOURCE = "http://localhost:9999/leads";
@@ -8,7 +9,10 @@ test.describe("Automation E2E", () => {
     page,
     request,
   }) => {
-    // Step 1: Verify API is healthy
+    const token = await getAuthToken(request);
+    const headers = authHeaders(token);
+
+    // Step 1: Verify API is healthy (no auth required)
     const healthResponse = await request.get(`${API_BASE}/health`);
     expect(healthResponse.ok()).toBeTruthy();
 
@@ -18,6 +22,7 @@ test.describe("Automation E2E", () => {
         source_url: MOCK_SOURCE,
         dry_run: false,
       },
+      headers,
     });
     expect(automateResponse.ok()).toBeTruthy();
     const automateData = await automateResponse.json();
@@ -25,7 +30,7 @@ test.describe("Automation E2E", () => {
     expect(automateData.entities_processed).toBeGreaterThan(0);
 
     // Step 3: Verify run appears in /runs
-    const runsResponse = await request.get(`${API_BASE}/runs`);
+    const runsResponse = await request.get(`${API_BASE}/runs`, { headers });
     expect(runsResponse.ok()).toBeTruthy();
     const runsData = await runsResponse.json();
     expect(runsData.runs.length).toBeGreaterThan(0);
@@ -36,7 +41,7 @@ test.describe("Automation E2E", () => {
     expect(matchingRun.status).toBe("completed");
 
     // Step 4: Verify approval was queued (mock data includes request_email lead)
-    const approvalsResponse = await request.get(`${API_BASE}/approvals`);
+    const approvalsResponse = await request.get(`${API_BASE}/approvals`, { headers });
     expect(approvalsResponse.ok()).toBeTruthy();
     const approvalsData = await approvalsResponse.json();
     const emailApprovals = approvalsData.approvals.filter(
@@ -44,8 +49,12 @@ test.describe("Automation E2E", () => {
     );
     expect(emailApprovals.length).toBeGreaterThan(0);
 
-    // Step 5: Load dashboard and verify data renders (not just headings)
-    await page.goto("/");
+    // Step 5: Load dashboard — log in via UI first
+    await page.goto("/login");
+    await page.fill('input[placeholder="Username"]', "admin");
+    await page.fill('input[placeholder="Password"]', "admin");
+    await page.click('button[type="submit"]');
+    await page.waitForURL("/");
 
     // Headings present
     await expect(page.getByRole("heading", { name: "decide-hub Operator Dashboard" })).toBeVisible();
