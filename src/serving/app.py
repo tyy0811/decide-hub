@@ -132,6 +132,10 @@ async def lifespan(app: FastAPI):
     try:
         await db.init_pool(dsn)
         _db_available = True
+        # Reclaim webhook runs orphaned by prior crashes
+        recovered = await db.recover_abandoned_runs(stale_minutes=30)
+        if recovered:
+            print(f"Recovered {recovered} abandoned run(s) from prior crash")
     except Exception:
         print("Warning: Postgres not available, logging disabled")
 

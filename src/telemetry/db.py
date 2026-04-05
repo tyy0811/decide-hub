@@ -92,6 +92,28 @@ async def complete_run(
     )
 
 
+async def recover_abandoned_runs(stale_minutes: int = 30) -> int:
+    """Mark stale 'running' rows as failed on startup.
+
+    Webhook runs persisted as 'running' before the background task executes
+    can be orphaned if the process crashes. This reclaims them so polling
+    clients see a terminal state instead of hanging forever.
+
+    Returns the number of recovered rows.
+    """
+    pool = get_pool()
+    result = await pool.execute(
+        "UPDATE automation_runs SET status = 'failed', "
+        "completed_at = NOW() "
+        "WHERE status = 'running' "
+        "AND started_at < NOW() - make_interval(mins => $1)",
+        stale_minutes,
+    )
+    # result is "UPDATE N"
+    count = int(result.split()[-1])
+    return count
+
+
 async def get_runs(limit: int = 20) -> list[dict]:
     pool = get_pool()
     rows = await pool.fetch(

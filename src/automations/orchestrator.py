@@ -29,6 +29,37 @@ _PERMISSION_TO_AUDIT = {
 }
 
 
+async def _record_shadow_if_needed(
+    shadow_action: str | None,
+    shadow_rule: str | None,
+    shadow_action_counts: Counter,
+    run_id: str,
+    entity_id: str,
+    production_action: str,
+    production_rule: str,
+) -> None:
+    """Record shadow outcome only after a successful idempotent insert.
+
+    This ensures shadow accounting matches production dedupe semantics:
+    duplicate/replayed entities that production discards are also excluded
+    from shadow TVD and delta calculations.
+    """
+    if shadow_action is None:
+        return
+    shadow_action_counts[shadow_action] += 1
+    try:
+        await db.insert_shadow_outcome(
+            run_id=run_id,
+            entity_id=entity_id,
+            production_action=production_action,
+            shadow_action=shadow_action,
+            production_rule=production_rule,
+            shadow_rule=shadow_rule,
+        )
+    except Exception as e:
+        print(f"Shadow outcome logging failed: {e}", file=sys.stderr)
+
+
 async def _emit_post_insert(
     entity_id: str, run_id: str, action: str, rule_name: str, permission: str,
 ) -> None:
@@ -111,22 +142,11 @@ async def run_automation_pipeline(
             action, rule_name = apply_rules(enriched, rules=rules)
             rule_hits.labels(action=action).inc()
 
-            # Shadow mode: run candidate rules (no permissions applied)
+            # Shadow mode: compute candidate action (logged after idempotent insert)
+            shadow_action = None
+            shadow_rule = None
             if shadow_rules is not None:
                 shadow_action, shadow_rule = apply_rules(enriched, rules=shadow_rules)
-                shadow_action_counts[shadow_action] += 1
-                if not dry_run:
-                    try:
-                        await db.insert_shadow_outcome(
-                            run_id=run_id,
-                            entity_id=entity_id,
-                            production_action=action,
-                            shadow_action=shadow_action,
-                            production_rule=rule_name,
-                            shadow_rule=shadow_rule,
-                        )
-                    except Exception as e:
-                        print(f"Shadow outcome logging failed: {e}", file=sys.stderr)
 
             # Check permissions
             _error_category = "validation_error"
@@ -135,6 +155,9 @@ async def run_automation_pipeline(
 
             if dry_run:
                 action_counts[action] += 1
+                # Dry runs have no idempotency, so shadow counts all entities
+                if shadow_action is not None:
+                    shadow_action_counts[shadow_action] += 1
                 processed += 1
                 results.append({
                     "entity_id": entity_id,
@@ -155,6 +178,10 @@ async def run_automation_pipeline(
                 )
                 if inserted:
                     await _emit_post_insert(entity_id, run_id, action, rule_name, permission)
+                    await _record_shadow_if_needed(
+                        shadow_action, shadow_rule, shadow_action_counts,
+                        run_id, entity_id, action, rule_name,
+                    )
                     action_counts[f"{action}:blocked"] += 1
                     processed += 1
                 continue
@@ -175,6 +202,10 @@ async def run_automation_pipeline(
                         reason=f"Rule '{rule_name}' matched, requires approval",
                     )
                     await _emit_post_insert(entity_id, run_id, action, rule_name, permission)
+                    await _record_shadow_if_needed(
+                        shadow_action, shadow_rule, shadow_action_counts,
+                        run_id, entity_id, action, rule_name,
+                    )
                     action_counts[f"{action}:approval_required"] += 1
                     processed += 1
                 continue
@@ -196,6 +227,10 @@ async def run_automation_pipeline(
             )
             if inserted:
                 await _emit_post_insert(entity_id, run_id, action, rule_name, permission)
+                await _record_shadow_if_needed(
+                    shadow_action, shadow_rule, shadow_action_counts,
+                    run_id, entity_id, action, rule_name,
+                )
                 action_counts[action] += 1
                 processed += 1
 

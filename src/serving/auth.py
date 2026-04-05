@@ -28,17 +28,23 @@ if JWT_SECRET == _DEFAULT_SECRET and not _ALLOW_INSECURE:
 
 # Hardcoded users — local development / demo only.
 # Production would use an identity provider (OAuth2, SAML).
-# When JWT_SECRET is explicitly set (non-default), these demo users
-# still work but are only reachable if you know the credentials.
-USERS: dict[str, dict] = {
+# Demo users are ONLY available when ALLOW_INSECURE_AUTH=true.
+# A real JWT_SECRET without ALLOW_INSECURE_AUTH disables these entirely.
+_DEMO_USERS: dict[str, dict] = {
     "admin": {"password": "admin", "role": "operator"},
     "operator1": {"password": "operator1", "role": "operator"},
     "viewer1": {"password": "viewer1", "role": "viewer"},
 }
 
+USERS: dict[str, dict] = _DEMO_USERS if _ALLOW_INSECURE else {}
+
 
 def authenticate_user(username: str, password: str) -> dict | None:
-    """Validate credentials. Returns user dict or None."""
+    """Validate credentials. Returns user dict or None.
+
+    Demo users are only available when ALLOW_INSECURE_AUTH=true.
+    With a production JWT_SECRET and no insecure flag, this always returns None.
+    """
     user = USERS.get(username)
     if not user or user["password"] != password:
         return None
