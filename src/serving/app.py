@@ -18,6 +18,7 @@ from src.policies.popularity import PopularityPolicy
 from src.policies.scorer import ScorerPolicy
 from src.policies.bandit import EpsilonGreedyPolicy
 from src.policies.retrieval import RetrievalPolicy
+from src.policies.ltr_scorer import PointwiseScorerPolicy
 import polars as pl
 from src.automations.crawler import fetch_entities
 from src.automations.orchestrator import run_automation_pipeline
@@ -92,6 +93,12 @@ async def lifespan(app: FastAPI):
         _policies["bandit"] = bandit
     except Exception as e:
         print(f"Warning: EpsilonGreedyPolicy failed to fit: {e}")
+
+    try:
+        pointwise = PointwiseScorerPolicy(n_estimators=50).fit(_train_data)
+        _policies["pointwise"] = pointwise
+    except Exception as e:
+        print(f"Warning: PointwiseScorerPolicy failed to fit: {e}")
 
     try:
         import json
