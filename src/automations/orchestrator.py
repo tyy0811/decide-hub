@@ -59,14 +59,17 @@ async def run_automation_pipeline(
 
     for raw_entity in entities:
         entity_id = raw_entity.get("entity_id", "unknown")
+        _error_category = "unknown_error"
 
         try:
             # Enrich
+            _error_category = "enrichment_error"
             enrich_start = time.monotonic()
             enriched = enrich_entity(raw_entity, today=today)
             enrichment_duration.observe(time.monotonic() - enrich_start)
 
             # Apply rules (configs loaded once, not per entity)
+            _error_category = "validation_error"
             action, rule_name = apply_rules(enriched, rules=rules)
             rule_hits.labels(action=action).inc()
 
@@ -88,6 +91,7 @@ async def run_automation_pipeline(
                         print(f"Shadow outcome logging failed: {e}", file=sys.stderr)
 
             # Check permissions
+            _error_category = "validation_error"
             permission = check_permission(action, permissions=permissions)
             permission_results.labels(result=permission).inc()
 
@@ -175,14 +179,14 @@ async def run_automation_pipeline(
 
         except Exception as e:
             failed += 1
-            failed_entities_counter.labels(error_type=type(e).__name__).inc()
+            failed_entities_counter.labels(error_type=_error_category).inc()
             if not dry_run and not suppress_failure_logging:
                 try:
                     await db.log_failed_entity(
                         entity_id=entity_id,
                         run_id=run_id,
-                        error_type=type(e).__name__,
-                        error_message=str(e),
+                        error_type=_error_category,
+                        error_message=f"{type(e).__name__}: {e}",
                         entity_data=raw_entity,
                     )
                 except Exception:

@@ -1,11 +1,15 @@
-# Retry policy per error type.
+# Retry policy per error category.
+# Categories are set by the pipeline stage where the error occurred:
+#   enrichment_error — data enrichment failed (transient, worth retrying)
+#   validation_error — rules/permissions validation failed (not transient)
+#   unknown_error    — unclassified failure
 # Entities exceeding max_retries move to dead_letter status.
 retry_policies:
-  fetch_timeout:
-    max_retries: 2
   enrichment_error:
-    max_retries: 1
+    max_retries: 2
   validation_error:
     max_retries: 0
+  unknown_error:
+    max_retries: 1
   default:
     max_retries: 0

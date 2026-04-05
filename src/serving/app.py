@@ -6,7 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -43,6 +43,18 @@ _db_available = False
 _automate_limiter = SlidingWindowRateLimiter(max_requests=5, window_seconds=60.0)
 
 MAX_ENTITIES_PER_RUN = 100
+_OPERATOR_API_KEY = os.environ.get("OPERATOR_API_KEY")
+
+
+def _require_operator_key(x_operator_key: str | None = Header(None)) -> None:
+    """Validate operator API key for approval-changing endpoints."""
+    if not _OPERATOR_API_KEY:
+        raise HTTPException(
+            403,
+            "OPERATOR_API_KEY not configured — approval endpoints disabled",
+        )
+    if x_operator_key != _OPERATOR_API_KEY:
+        raise HTTPException(403, "Invalid or missing X-Operator-Key header")
 
 
 def get_policies() -> dict[str, BasePolicy]:
@@ -273,7 +285,9 @@ async def get_approvals():
 
 
 @app.post("/approvals/{approval_id}/approve", response_model=ApprovalActionResponse)
-async def approve_action(approval_id: int):
+async def approve_action(
+    approval_id: int, _: None = Depends(_require_operator_key),
+):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
@@ -285,21 +299,10 @@ async def approve_action(approval_id: int):
             raise HTTPException(404, f"Approval {approval_id} not found")
         raise HTTPException(409, f"Approval {approval_id} is already {existing['status']}")
 
-    # Record the approval outcome (bookkeeping only)
-    # TODO: trigger actual action execution (e.g. send email) once executor is built
-    approval_run_id = f"approval_{approval_id}"
-    await db.create_run(approval_run_id)
-    await db.complete_run(approval_run_id, entities_processed=1, entities_failed=0, action_distribution={approval["proposed_action"]: 1})
-
-    await db.insert_outcome_idempotent(
-        run_id=approval_run_id,
-        entity_id=approval["entity_id"],
-        enriched_fields={},
-        action_taken=approval["proposed_action"],
-        rule_matched=None,
-        permission_result="approved",
-    )
-
+    # Approval recorded — action is NOT executed yet.
+    # Execution requires an action executor (not yet built).
+    # The approval stays in "approved" state until an executor
+    # picks it up. No fake "completed run" records are created.
     await log_audit_event(
         entity_id=approval["entity_id"],
         run_id=None,
@@ -307,7 +310,7 @@ async def approve_action(approval_id: int):
         action_type="approve",
         action=approval["proposed_action"],
         rule_matched=None,
-        permission_result="approved",
+        permission_result="approved_pending_execution",
         reason=None,
     )
 
@@ -315,12 +318,14 @@ async def approve_action(approval_id: int):
         id=approval_id,
         entity_id=approval["entity_id"],
         proposed_action=approval["proposed_action"],
-        status="approved",
+        status="approved_pending_execution",
     )
 
 
 @app.post("/approvals/{approval_id}/reject", response_model=ApprovalActionResponse)
-async def reject_action(approval_id: int):
+async def reject_action(
+    approval_id: int, _: None = Depends(_require_operator_key),
+):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 

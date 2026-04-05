@@ -60,19 +60,55 @@ async def test_reject_does_not_execute(db_pool):
     assert email_approval["id"] not in pending_ids
 
 
-def test_approve_endpoint_404():
-    """Approve nonexistent approval returns 404."""
+def test_approve_endpoint_requires_api_key():
+    """Approve without API key returns 403."""
     with TestClient(app) as client:
         resp = client.post("/approvals/99999/approve")
-        # 404 when DB is available (approval not found).
-        # 503 when DB is unavailable (CI without Postgres).
-        # Both are correct rejections — the request cannot succeed.
-        assert resp.status_code in (404, 503)
+        assert resp.status_code == 403
 
 
-def test_reject_endpoint_404():
-    """Reject nonexistent approval returns 404."""
+def test_reject_endpoint_requires_api_key():
+    """Reject without API key returns 403."""
     with TestClient(app) as client:
         resp = client.post("/approvals/99999/reject")
-        # See test_approve_endpoint_404 for rationale.
-        assert resp.status_code in (404, 503)
+        assert resp.status_code == 403
+
+
+def test_approve_endpoint_wrong_key():
+    """Approve with wrong API key returns 403."""
+    import os
+    old = os.environ.get("OPERATOR_API_KEY")
+    os.environ["OPERATOR_API_KEY"] = "correct-key"
+    try:
+        # Reload the module-level variable
+        import src.serving.app as app_mod
+        app_mod._OPERATOR_API_KEY = "correct-key"
+        with TestClient(app) as client:
+            resp = client.post(
+                "/approvals/99999/approve",
+                headers={"X-Operator-Key": "wrong-key"},
+            )
+            assert resp.status_code == 403
+    finally:
+        app_mod._OPERATOR_API_KEY = old
+        if old is None:
+            os.environ.pop("OPERATOR_API_KEY", None)
+        else:
+            os.environ["OPERATOR_API_KEY"] = old
+
+
+def test_approve_endpoint_valid_key_reaches_db():
+    """Approve with correct API key passes auth and reaches DB layer."""
+    import src.serving.app as app_mod
+    old = app_mod._OPERATOR_API_KEY
+    app_mod._OPERATOR_API_KEY = "test-key"
+    try:
+        with TestClient(app) as client:
+            resp = client.post(
+                "/approvals/99999/approve",
+                headers={"X-Operator-Key": "test-key"},
+            )
+            # 404 (approval not found) or 503 (no DB) — not 403
+            assert resp.status_code in (404, 503)
+    finally:
+        app_mod._OPERATOR_API_KEY = old
