@@ -17,12 +17,14 @@ dependencies = [
     "PyJWT>=2.0",
     "python-multipart>=0.0.9",
     "posthog>=3.0",
+    "torch>=2.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "shap>=0.44",
 ]
 
 [build-system]
