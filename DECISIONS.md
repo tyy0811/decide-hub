@@ -249,3 +249,24 @@ embeddings from training data) and cold-start users (who get zero
 vectors). If the improvement only comes from warm users, that's an
 honest finding showing the limitation of CF features for cold-start
 users, not a failure of the approach.
+
+## 19. Anomaly detection at 3 SD threshold
+
+Anomaly detection uses z-scores on action category proportions,
+comparing the last 5 runs against the preceding 20 runs. The threshold
+is 3 standard deviations (not 2) because small sample sizes (5 runs
+of 20-50 entities) make 2 SD too sensitive — a single unusual run
+triggers a false alert. 3 SD reduces false positives while still
+catching real distributional shifts.
+
+Both distribution drift and error-rate spike checks operate on the
+same set of runs from a single query, preventing inconsistent windows
+that could suppress one check while triggering the other.
+
+The `/anomalies` endpoint is public (no auth required) while
+approval-changing endpoints require operator auth. This is intentional:
+anomaly status is read-only operational visibility — it shows whether
+something looks wrong, but cannot change system state. Approval
+endpoints mutate the action queue and must be gated. The distinction
+mirrors standard practice: monitoring dashboards are public within the
+network, admin actions require authentication.
