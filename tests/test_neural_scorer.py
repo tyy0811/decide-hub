@@ -3,6 +3,7 @@
 import polars as pl
 import pytest
 
+torch = pytest.importorskip("torch", reason="torch not installed")
 pytestmark = pytest.mark.slow
 
 from src.policies.neural_scorer import NeuralScorerPolicy
