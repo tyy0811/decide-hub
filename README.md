@@ -18,8 +18,13 @@ graph TB
         automate["/automate"]
         approvals["/approvals"]
         retry["/automate/retry"]
+        webhook["/webhooks/automate"]
+        upload["/automate/upload"]
         runs["/runs"]
+        anomalies["/anomalies"]
+        auth["/auth/login"]
         metrics["/metrics"]
+        ws["WS /ws/runs"]
     end
 
     subgraph Ranking["Ranking Policies"]
@@ -54,12 +59,21 @@ graph TB
         prom["Prometheus metrics"]
     end
 
+    subgraph Evaluation["Evaluation & Experimentation"]
+        ips["IPS / Clipped IPS"]
+        dr["Doubly Robust"]
+        experiment["A/B Experiment Engine"]
+        online_sim["Online Simulation (Regret)"]
+        shap_exp["SHAP Explainability"]
+    end
+
     subgraph Dashboard["Operator Dashboard (Next.js)"]
-        runs_table["RunsTable"]
-        approvals_list["ApprovalsList"]
-        action_chart["ActionChart"]
-        error_summary["ErrorSummary"]
-        shadow_cmp["ShadowComparison"]
+        overview["/ Overview"]
+        run_detail["/runs/:id Detail"]
+        approvals_page["/approvals Queue"]
+        policies_page["/policies Comparison"]
+        login_page["/login"]
+        anomaly_ind["Anomaly Indicator"]
     end
 
     rank --> Ranking
@@ -70,10 +84,12 @@ graph TB
     runs --> pg
 
     Ranking --> Telemetry
+    Ranking --> Evaluation
     Automation --> Telemetry
     Automation --> Safety
     Safety --> Telemetry
     Dashboard --> API
+    Dashboard -.->|WebSocket| ws
 ```
 
 ## Quick Start
@@ -129,7 +145,20 @@ why the bandit uses in-memory arm state and what the evaluation measures.
 | Clipped IPS (M=10) | 0.8879 |
 
 Evaluated on synthetic logged-policy data where propensities are known
-by construction. See [DECISIONS.md](DECISIONS.md) #1 for methodology.
+by construction. Doubly Robust estimator reduces variance by combining IPS
+with a reward model. See [DECISIONS.md](DECISIONS.md) #1, #25.
+
+## A/B Experimentation (Synthetic Data)
+
+Bootstrap confidence intervals with no p-values — CIs and effect sizes
+communicate significance while preserving effect magnitude and uncertainty.
+Segment-wise breakdown and minimum detectable effect calculator included.
+
+```bash
+python scripts/run_experiment.py    # Run control vs treatment comparison
+```
+
+See [DECISIONS.md](DECISIONS.md) #17 for the CIs-over-p-values rationale.
 
 ## Retrieval Benchmarks (Synthetic Corpus)
 
@@ -162,12 +191,25 @@ Source API -> Crawler -> Enrichment -> Rules -> Permissions -> Execute/Queue -> 
 
 ## Operator Dashboard
 
-Next.js + React + Tailwind dashboard at `:3000`:
-- Recent automation runs with status
-- Pending approvals with approve/reject buttons
-- Action distribution chart
-- Failed entities grouped by error type
-- Shadow mode comparison (production vs candidate rule distributions)
+Multi-page Next.js + React + Tailwind dashboard at `:3000`:
+
+- **`/`** — Overview: runs, approvals, action chart, errors, shadow comparison, anomaly indicator
+- **`/runs/:id`** — Run detail: entity-level outcomes + audit trail
+- **`/approvals`** — Dedicated approval queue with approve/reject buttons
+- **`/policies`** — Policy comparison view (cached evaluation results)
+- **`/login`** — JWT authentication (operator/viewer roles)
+- **WebSocket live updates** — RunsTable streams entity_processed events in real time
+- **Role-based UI** — Approve/reject buttons visible only to operators
+- **Anomaly indicator** — Green/red status from `/anomalies` endpoint (3 SD z-score drift detection)
+
+## Authentication
+
+JWT HS256 with two roles:
+- **`operator`**: read + write (automate, approve/reject, retry, webhook, upload)
+- **`viewer`**: read-only (runs, approvals, metrics)
+- `/health` and `/metrics` are open (no auth required)
+
+Demo accounts: `admin/admin` (operator), `viewer1/viewer1` (viewer). See [DECISIONS.md](DECISIONS.md) #21.
 
 ## Development
 
@@ -178,12 +220,34 @@ make e2e       # Playwright E2E (requires Postgres + API + Next.js)
 make eval      # Run offline ranking evaluation
 make serve     # Start FastAPI dev server
 make db-reset  # Reset Postgres (destroys data)
+```
 
-# Upload CSV entities (requires auth token)
+**Analysis scripts:**
+
+```bash
+python scripts/run_experiment.py          # A/B experiment with bootstrap CIs
+python scripts/run_bandit_comparison.py   # Bandit vs static cumulative reward
+python scripts/run_regret_comparison.py   # Multi-policy regret curves
+python scripts/run_cf_comparison.py       # Scorer with/without CF embeddings
+python scripts/run_pareto_analysis.py     # Constrained optimization tradeoffs
+python scripts/compare_estimators.py      # IPS vs Doubly Robust variance
+python scripts/generate_shap_plot.py      # SHAP feature importance plot
+```
+
+**Entity intake (requires auth token):**
+
+```bash
+# CSV upload
 curl -X POST http://localhost:8000/automate/upload \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@tests/fixtures/sample_entities.csv" \
   -F "dry_run=true"
+
+# Webhook (async — returns 202, poll /runs/{run_id})
+curl -X POST http://localhost:8000/webhooks/automate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"entities": [{"entity_id": "test", "company": "Co", "role": "CTO", "source": "organic", "signup_date": "2026-04-01"}]}'
 ```
 
 See `tests/fixtures/sample_entities.csv` for the expected CSV format.
@@ -197,10 +261,19 @@ docker compose down             # Stop all
 
 ## Roadmap
 
-This repo is designed to grow from static ranking to contextual bandits to full policy learning:
+Completed:
+- ~~Policy replay + change control~~ (Phase 1 — TVD-based CI gate)
+- ~~Shadow mode + audit trail + approve/reject~~ (Phase 1 — safe deployment pipeline)
+- ~~Contextual bandits~~ (Phase 2 — epsilon-greedy with online simulation)
+- ~~Retrieval/search mode~~ (Phase 2 — TF-IDF, same BasePolicy interface)
+- ~~A/B experimentation layer~~ (Phase 2 — bootstrap CIs, KPI transforms)
+- ~~CF embeddings for scorer~~ (Phase 2 — SVD, 7.6x NDCG lift)
+- ~~Anomaly detection~~ (Phase 2 — z-score drift, rate spikes)
+- ~~Multi-page dashboard + WebSocket + auth~~ (Phase 3)
+- ~~Webhook + CSV upload~~ (Phase 3 — async execution, entity intake)
+- ~~Model depth~~ (Phase 4 — pointwise/neural/pLTV, SHAP, DR, constrained optimization, Grafana)
 
-- ~~Collaborative filtering features for scorer~~ (shipped in Phase 2 — SVD embeddings, 21x NDCG lift)
-- ~~Contextual bandits (exploration/exploitation with safety bounds)~~ (shipped in Phase 2 — epsilon-greedy with online simulation)
-- ~~Policy replay + change control~~ (shipped in Phase 1)
-- ~~Model depth + advanced ML~~ (shipped in Phase 4 — pointwise/neural/pLTV scorers, SHAP, DR estimator, constrained optimization, Grafana observability)
+Future:
 - Action executor (trigger real side-effects for approved actions)
+- Offline RL (batch-constrained policy learning)
+- Multi-objective optimization (Pareto-optimal policy selection)
