@@ -115,3 +115,14 @@ def test_rank_retrieval_without_query_returns_422(client):
     })
     # 422 if retrieval loaded, 404 if not — either way, not 500
     assert resp.status_code in (422, 404)
+
+
+def test_anomalies_endpoint(client):
+    """Anomalies endpoint returns valid response."""
+    resp = client.get("/anomalies")
+    if resp.status_code == 200:
+        data = resp.json()
+        assert data["status"] in ("ok", "alert")
+    else:
+        # 503 if DB unavailable
+        assert resp.status_code == 503

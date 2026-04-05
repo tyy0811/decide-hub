@@ -27,7 +27,9 @@ from src.serving.schemas import (
     RunsResponse, RunItem,
     FailedEntitiesResponse, FailedEntityItem,
     RetryResponse,
+    AnomalyResponse, AnomalyItem,
 )
+from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
 from src.serving.rate_limit import SlidingWindowRateLimiter, check_entity_cap, check_backpressure
 from src.telemetry import db
 from src.telemetry.audit import log_audit_event
@@ -454,4 +456,67 @@ async def retry_failed():
         succeeded=succeeded,
         dead_lettered=dead_lettered,
         still_failing=still_failing,
+    )
+
+
+@app.get("/anomalies", response_model=AnomalyResponse)
+async def get_anomalies(baseline_runs: int = 20, recent_runs: int = 5):
+    """Check automation outcomes for anomalies.
+
+    Compares action distribution and error rates of recent runs
+    against a trailing baseline window.
+    """
+    if not _db_available:
+        raise HTTPException(503, "Database not available")
+
+    pool = db.get_pool()
+
+    # Fetch run action distributions
+    rows = await pool.fetch(
+        "SELECT action_distribution FROM automation_runs "
+        "WHERE status = 'completed' AND action_distribution IS NOT NULL "
+        "ORDER BY completed_at DESC LIMIT $1",
+        baseline_runs + recent_runs,
+    )
+
+    if len(rows) < recent_runs + 1:
+        return AnomalyResponse(
+            status="ok", anomalies=[],
+            baseline_window=0, recent_window=len(rows),
+        )
+
+    # Split into recent and baseline
+    distributions = [dict(r["action_distribution"]) for r in rows]
+    recent_dists = distributions[:recent_runs]
+    baseline_dists = distributions[recent_runs:]
+
+    # Detect distribution drift
+    drift_result = detect_distribution_drift(baseline_dists, recent_dists)
+
+    # Detect error rate spike
+    error_rows = await pool.fetch(
+        "SELECT entities_failed, entities_processed FROM automation_runs "
+        "WHERE status = 'completed' "
+        "ORDER BY completed_at DESC LIMIT $1",
+        baseline_runs + recent_runs,
+    )
+    error_rates = [
+        r["entities_failed"] / max(r["entities_processed"], 1)
+        for r in error_rows
+    ]
+    recent_error_rates = error_rates[:recent_runs]
+    baseline_error_rates = error_rates[recent_runs:]
+    error_result = detect_rate_spike(
+        baseline_error_rates, recent_error_rates, metric_name="error_rate",
+    )
+
+    # Combine results
+    all_anomalies = drift_result.anomalies + error_result.anomalies
+    status = "alert" if all_anomalies else "ok"
+
+    return AnomalyResponse(
+        status=status,
+        anomalies=[AnomalyItem(**a) for a in all_anomalies],
+        baseline_window=len(baseline_dists),
+        recent_window=len(recent_dists),
     )

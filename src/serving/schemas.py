@@ -121,3 +121,20 @@ class RetryResponse(BaseModel):
     succeeded: int
     dead_lettered: int
     still_failing: int
+
+
+# --- Anomalies ---
+
+class AnomalyItem(BaseModel):
+    metric: str
+    observed: float
+    expected_range: str
+    severity: str
+    z_score: float | None = None
+
+
+class AnomalyResponse(BaseModel):
+    status: str  # "ok" or "alert"
+    anomalies: list[AnomalyItem]
+    baseline_window: int
+    recent_window: int
