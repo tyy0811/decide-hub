@@ -197,7 +197,22 @@ async def run_automation_pipeline(
                 except Exception:
                     pass  # Don't let failure logging kill the run
 
-    # Complete run
+    # Compute shadow metrics before completing run (so they get persisted)
+    shadow_tvd = None
+    shadow_action_deltas_dict = None
+    if shadow_rules is not None:
+        production_counts: Counter = Counter()
+        for ctx_action in action_counts:
+            base = ctx_action.split(":")[0]
+            production_counts[base] += action_counts[ctx_action]
+        shadow_tvd = total_variation_distance(
+            dict(production_counts), dict(shadow_action_counts),
+        )
+        shadow_action_deltas_dict = compute_action_deltas(
+            dict(production_counts), dict(shadow_action_counts),
+        )
+
+    # Complete run (includes shadow summary for dashboard)
     automation_runs.labels(status="dry_run" if dry_run else "completed").inc()
     if not dry_run:
         await db.complete_run(
@@ -205,6 +220,8 @@ async def run_automation_pipeline(
             entities_processed=processed,
             entities_failed=failed,
             action_distribution=dict(action_counts),
+            shadow_tvd=shadow_tvd,
+            shadow_action_deltas=shadow_action_deltas_dict,
         )
 
     result = {
@@ -216,18 +233,8 @@ async def run_automation_pipeline(
         "dry_run": dry_run,
         "results": results,
     }
-
-    if shadow_rules is not None:
-        production_counts: Counter = Counter()
-        for ctx_action in action_counts:
-            # Strip permission suffixes for comparison
-            base = ctx_action.split(":")[0]
-            production_counts[base] += action_counts[ctx_action]
-        result["shadow_tvd"] = total_variation_distance(
-            dict(production_counts), dict(shadow_action_counts),
-        )
-        result["shadow_action_deltas"] = compute_action_deltas(
-            dict(production_counts), dict(shadow_action_counts),
-        )
+    if shadow_tvd is not None:
+        result["shadow_tvd"] = shadow_tvd
+        result["shadow_action_deltas"] = shadow_action_deltas_dict
 
     return result

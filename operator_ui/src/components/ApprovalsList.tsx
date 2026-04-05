@@ -12,6 +12,8 @@ interface Approval {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const OPERATOR_KEY = process.env.NEXT_PUBLIC_OPERATOR_API_KEY || "";
+const OPERATOR_NAME = process.env.NEXT_PUBLIC_OPERATOR_NAME || "dashboard";
 
 export default function ApprovalsList() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -40,6 +42,10 @@ export default function ApprovalsList() {
     try {
       const resp = await fetch(`${API_BASE}/approvals/${id}/${action}`, {
         method: "POST",
+        headers: {
+          "X-Operator-Key": OPERATOR_KEY,
+          "X-Operator-Name": OPERATOR_NAME,
+        },
       });
       if (!resp.ok) throw new Error(`Failed to ${action} (${resp.status})`);
       fetchApprovals();

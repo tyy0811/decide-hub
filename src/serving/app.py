@@ -50,11 +50,15 @@ _automate_limiter = SlidingWindowRateLimiter(max_requests=5, window_seconds=60.0
 MAX_ENTITIES_PER_RUN = 100
 
 
-def _require_operator_key(x_operator_key: str | None = Header(None)) -> None:
-    """Validate operator API key for approval-changing endpoints.
+def _require_operator_key(
+    x_operator_key: str | None = Header(None),
+    x_operator_name: str | None = Header(None),
+) -> str:
+    """Validate operator API key and return operator identity.
 
     Reads OPERATOR_API_KEY from env on every call so key rotation
-    does not require a server restart.
+    does not require a server restart. Returns the operator name
+    for audit attribution.
     """
     api_key = os.environ.get("OPERATOR_API_KEY")
     if not api_key:
@@ -64,6 +68,7 @@ def _require_operator_key(x_operator_key: str | None = Header(None)) -> None:
         )
     if x_operator_key != api_key:
         raise HTTPException(403, "Invalid or missing X-Operator-Key header")
+    return x_operator_name or "operator"
 
 
 def get_policies() -> dict[str, BasePolicy]:
@@ -295,7 +300,7 @@ async def get_approvals():
 
 @app.post("/approvals/{approval_id}/approve", response_model=ApprovalActionResponse)
 async def approve_action(
-    approval_id: int, _: None = Depends(_require_operator_key),
+    approval_id: int, operator: str = Depends(_require_operator_key),
 ):
     if not _db_available:
         raise HTTPException(503, "Database not available")
@@ -315,7 +320,7 @@ async def approve_action(
     await log_audit_event(
         entity_id=approval["entity_id"],
         run_id=None,
-        actor="operator",
+        actor=operator,
         action_type="approve",
         action=approval["proposed_action"],
         rule_matched=None,
@@ -333,7 +338,7 @@ async def approve_action(
 
 @app.post("/approvals/{approval_id}/reject", response_model=ApprovalActionResponse)
 async def reject_action(
-    approval_id: int, _: None = Depends(_require_operator_key),
+    approval_id: int, operator: str = Depends(_require_operator_key),
 ):
     if not _db_available:
         raise HTTPException(503, "Database not available")
@@ -349,7 +354,7 @@ async def reject_action(
     await log_audit_event(
         entity_id=approval["entity_id"],
         run_id=None,
-        actor="operator",
+        actor=operator,
         action_type="reject",
         action=approval["proposed_action"],
         rule_matched=None,
@@ -379,6 +384,8 @@ async def get_runs():
                 entities_processed=r["entities_processed"],
                 entities_failed=r["entities_failed"],
                 action_distribution=r.get("action_distribution") or {},
+                shadow_tvd=r.get("shadow_tvd"),
+                shadow_action_deltas=r.get("shadow_action_deltas"),
                 started_at=str(r["started_at"]),
                 completed_at=str(r["completed_at"]) if r.get("completed_at") else None,
             )

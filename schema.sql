@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS automation_runs (
     entities_processed INTEGER DEFAULT 0,
     entities_failed INTEGER DEFAULT 0,
     action_distribution JSONB DEFAULT '{}',
+    shadow_tvd REAL,
+    shadow_action_deltas JSONB,
     started_at TIMESTAMPTZ DEFAULT NOW(),
     completed_at TIMESTAMPTZ
 );
@@ -100,6 +102,10 @@ CREATE INDEX IF NOT EXISTS idx_audit_type ON action_audit_log(action_type);
 ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS max_retries INTEGER DEFAULT 0;
 ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'failed';
 ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS entity_data JSONB;
+
+-- Migration: add shadow summary columns to automation_runs
+ALTER TABLE automation_runs ADD COLUMN IF NOT EXISTS shadow_tvd REAL;
+ALTER TABLE automation_runs ADD COLUMN IF NOT EXISTS shadow_action_deltas JSONB;
 
 -- Backpressure query index
 CREATE INDEX IF NOT EXISTS idx_outcomes_created ON automation_outcomes(created_at);

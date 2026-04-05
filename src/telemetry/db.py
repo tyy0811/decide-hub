@@ -75,15 +75,18 @@ async def complete_run(
     entities_processed: int,
     entities_failed: int,
     action_distribution: dict,
+    shadow_tvd: float | None = None,
+    shadow_action_deltas: dict | None = None,
 ) -> None:
     pool = get_pool()
     await pool.execute(
         "UPDATE automation_runs SET status = 'completed', "
         "entities_processed = $2, entities_failed = $3, "
-        "action_distribution = $4, completed_at = NOW() "
+        "action_distribution = $4, shadow_tvd = $5, "
+        "shadow_action_deltas = $6, completed_at = NOW() "
         "WHERE run_id = $1",
         run_id, entities_processed, entities_failed,
-        action_distribution,
+        action_distribution, shadow_tvd, shadow_action_deltas,
     )
 
 

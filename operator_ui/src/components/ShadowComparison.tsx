@@ -22,11 +22,17 @@ export default function ShadowComparison() {
       })
       .then((runsData) => {
         const runs = runsData.runs ?? [];
-        if (runs.length > 0) {
-          const latest = runs[0];
-          if (latest.action_distribution && latest.shadow_tvd !== undefined && latest.shadow_tvd !== null) {
-            setData(null);
-          }
+        // Find the most recent run with shadow data
+        const shadowRun = runs.find(
+          (r: { shadow_tvd?: number; action_distribution?: Record<string, number>; shadow_action_deltas?: Record<string, number> }) =>
+            r.shadow_tvd !== undefined && r.shadow_tvd !== null
+        );
+        if (shadowRun) {
+          setData({
+            shadow_tvd: shadowRun.shadow_tvd,
+            action_distribution: shadowRun.action_distribution ?? {},
+            shadow_action_deltas: shadowRun.shadow_action_deltas ?? {},
+          });
         }
       })
       .catch(() => setData(null))

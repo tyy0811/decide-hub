@@ -94,6 +94,8 @@ class RunItem(BaseModel):
     entities_processed: int
     entities_failed: int
     action_distribution: dict
+    shadow_tvd: float | None = None
+    shadow_action_deltas: dict[str, float] | None = None
     started_at: str
     completed_at: str | None
 
