@@ -126,3 +126,16 @@ def test_anomalies_endpoint(client):
     else:
         # 503 if DB unavailable
         assert resp.status_code == 503
+
+
+def test_run_detail_404(client):
+    """Run detail for nonexistent run returns 404 or 503."""
+    resp = client.get("/runs/nonexistent_run_id")
+    assert resp.status_code in (404, 503)
+
+
+def test_eval_results_empty(client):
+    """Eval results returns empty list initially."""
+    resp = client.get("/evaluate/results")
+    assert resp.status_code == 200
+    assert isinstance(resp.json()["results"], list)

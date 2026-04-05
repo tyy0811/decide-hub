@@ -326,3 +326,28 @@ async def get_shadow_outcomes(run_id: str) -> list[dict]:
         run_id,
     )
     return [dict(r) for r in rows]
+
+
+async def get_run_detail(run_id: str) -> dict | None:
+    """Get a single run with its entity-level outcomes."""
+    pool = get_pool()
+    run = await pool.fetchrow(
+        "SELECT * FROM automation_runs WHERE run_id = $1", run_id,
+    )
+    if not run:
+        return None
+    outcomes = await pool.fetch(
+        "SELECT entity_id, action_taken, rule_matched, permission_result "
+        "FROM automation_outcomes WHERE run_id = $1 ORDER BY created_at",
+        run_id,
+    )
+    audits = await pool.fetch(
+        "SELECT entity_id, actor, action_type, reason "
+        "FROM action_audit_log WHERE run_id = $1 ORDER BY created_at",
+        run_id,
+    )
+    return {
+        **dict(run),
+        "outcomes": [dict(r) for r in outcomes],
+        "audit_events": [dict(r) for r in audits],
+    }

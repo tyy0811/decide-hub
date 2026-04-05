@@ -28,6 +28,8 @@ from src.serving.schemas import (
     FailedEntitiesResponse, FailedEntityItem,
     RetryResponse,
     AnomalyResponse, AnomalyItem,
+    RunDetailResponse, RunOutcomeItem, AuditEventItem,
+    EvalResultItem, EvalResultsResponse,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
 from src.serving.rate_limit import SlidingWindowRateLimiter, check_backpressure
@@ -197,6 +199,10 @@ async def rank(req: RankRequest):
     )
 
 
+# Cache of last evaluation results (populated by POST /evaluate)
+_eval_cache: list[dict] = []
+
+
 @app.post("/evaluate", response_model=EvaluateResponse)
 async def evaluate(req: EvaluateRequest):
     policy = _policies.get(req.policy)
@@ -213,10 +219,40 @@ async def evaluate(req: EvaluateRequest):
                 reward=value, policy_id=req.policy,
             )
 
+    _eval_cache.append({"policy": req.policy, "k": req.k, "metrics": metrics})
+
     return EvaluateResponse(
         policy=req.policy,
         k=req.k,
         metrics=metrics,
+    )
+
+
+@app.get("/runs/{run_id}", response_model=RunDetailResponse)
+async def get_run_detail_endpoint(run_id: str):
+    if not _db_available:
+        raise HTTPException(503, "Database not available")
+    detail = await db.get_run_detail(run_id)
+    if not detail:
+        raise HTTPException(404, f"Run {run_id} not found")
+    return RunDetailResponse(
+        run_id=detail["run_id"],
+        status=detail["status"],
+        entities_processed=detail["entities_processed"],
+        entities_failed=detail["entities_failed"],
+        action_distribution=detail.get("action_distribution") or {},
+        started_at=str(detail["started_at"]),
+        completed_at=str(detail["completed_at"]) if detail.get("completed_at") else None,
+        outcomes=detail["outcomes"],
+        audit_events=detail["audit_events"],
+    )
+
+
+@app.get("/evaluate/results", response_model=EvalResultsResponse)
+async def get_eval_results():
+    """Return cached evaluation results. Populated by POST /evaluate or make eval."""
+    return EvalResultsResponse(
+        results=[EvalResultItem(**r) for r in _eval_cache]
     )
 
 

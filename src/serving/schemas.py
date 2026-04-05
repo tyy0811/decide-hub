@@ -140,3 +140,43 @@ class AnomalyResponse(BaseModel):
     anomalies: list[AnomalyItem]
     baseline_window: int
     recent_window: int
+
+
+# --- Run Detail ---
+
+class RunOutcomeItem(BaseModel):
+    entity_id: str
+    action_taken: str
+    rule_matched: str | None
+    permission_result: str
+
+
+class AuditEventItem(BaseModel):
+    entity_id: str
+    actor: str
+    action_type: str
+    reason: str | None
+
+
+class RunDetailResponse(BaseModel):
+    run_id: str
+    status: str
+    entities_processed: int
+    entities_failed: int
+    action_distribution: dict
+    started_at: str
+    completed_at: str | None
+    outcomes: list[RunOutcomeItem]
+    audit_events: list[AuditEventItem]
+
+
+# --- Evaluation Results Cache ---
+
+class EvalResultItem(BaseModel):
+    policy: str
+    k: int
+    metrics: dict[str, float]
+
+
+class EvalResultsResponse(BaseModel):
+    results: list[EvalResultItem]
