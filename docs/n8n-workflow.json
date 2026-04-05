@@ -1,0 +1,55 @@
+{
+  "name": "decide-hub Webhook Automation",
+  "nodes": [
+    {
+      "name": "Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [250, 300]
+    },
+    {
+      "name": "Send Entities",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/webhooks/automate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "entities",
+              "value": "[{\"entity_id\": \"n8n_1\", \"company\": \"TestCo\", \"role\": \"CTO\", \"source\": \"organic\", \"signup_date\": \"2026-04-01\"}]"
+            },
+            {
+              "name": "dry_run",
+              "value": "false"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [650, 300],
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      }
+    },
+    {
+      "name": "Poll Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://localhost:8000/runs/{{ $node['Send Entities'].json.run_id }}"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {"main": [[{"node": "Send Entities", "type": "main", "index": 0}]]},
+    "Send Entities": {"main": [[{"node": "Wait", "type": "main", "index": 0}]]},
+    "Wait": {"main": [[{"node": "Poll Result", "type": "main", "index": 0}]]}
+  }
+}

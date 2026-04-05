@@ -300,3 +300,15 @@ payoff of building the audit trail before auth.
 The WebSocket endpoint authenticates via a token query parameter
 (browsers cannot set headers on WebSocket upgrades). Unauthenticated
 connections are rejected with close code 4001.
+
+## 22. Webhook returns 202 Accepted for async processing
+
+The webhook endpoint (`POST /webhooks/automate`) accepts entities
+directly (bypassing the crawler) and returns 202 Accepted with a
+run_id immediately. The pipeline runs asynchronously via FastAPI
+BackgroundTasks. The caller polls `GET /runs/{run_id}` for completion.
+
+This is the standard pattern for long-running operations — the client
+polls for completion rather than holding a connection open. It's also
+the first async-response endpoint in the project, establishing the
+pattern for future endpoints that trigger background work.
