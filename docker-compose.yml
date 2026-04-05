@@ -22,6 +22,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://decide_hub:decide_hub@postgres:5432/decide_hub
+      ALLOW_INSECURE_AUTH: "true"
     depends_on:
       postgres:
         condition: service_healthy
