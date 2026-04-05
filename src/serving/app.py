@@ -594,6 +594,12 @@ async def upload_entities(
         raise HTTPException(429, detail="Rate limit exceeded",
                             headers={"Retry-After": str(int(_automate_limiter.retry_after()) + 1)})
 
+    if _db_available and not dry_run:
+        if await check_backpressure():
+            rate_limited_total.labels(endpoint="/automate/upload", reason="backpressure").inc()
+            raise HTTPException(429, detail="Backpressure: write rate too high",
+                                headers={"Retry-After": "30"})
+
     # Read and parse CSV
     content = await file.read()
     text = content.decode("utf-8")
@@ -652,6 +658,12 @@ async def webhook_automate(
         raise HTTPException(429, detail="Rate limit exceeded",
                             headers={"Retry-After": str(int(_automate_limiter.retry_after()) + 1)})
 
+    if _db_available and not req.dry_run:
+        if await check_backpressure():
+            rate_limited_total.labels(endpoint="/webhooks/automate", reason="backpressure").inc()
+            raise HTTPException(429, detail="Backpressure: write rate too high",
+                                headers={"Retry-After": "30"})
+
     if len(req.entities) > MAX_ENTITIES_PER_RUN:
         raise HTTPException(422, f"Entity count {len(req.entities)} exceeds maximum {MAX_ENTITIES_PER_RUN}")
 
@@ -669,14 +681,28 @@ async def webhook_automate(
     # durable and pollable even if the background task never executes.
     await db.create_run(run_id)
 
-    # Async execution via BackgroundTasks
-    background_tasks.add_task(
-        run_automation_pipeline,
-        entities=req.entities,
-        run_id=run_id,
-        dry_run=False,
-        shadow_rules_config=req.shadow_rules_config,
-    )
+    async def _safe_run():
+        """Wrapper that marks the run as failed on any unhandled exception."""
+        try:
+            await run_automation_pipeline(
+                entities=req.entities,
+                run_id=run_id,
+                dry_run=False,
+                shadow_rules_config=req.shadow_rules_config,
+            )
+        except Exception:
+            # Mark run as terminally failed so polling clients don't hang
+            try:
+                await db.complete_run(
+                    run_id=run_id,
+                    entities_processed=0,
+                    entities_failed=len(req.entities),
+                    action_distribution={},
+                )
+            except Exception:
+                pass  # Best-effort; run stays in 'running' only if DB is down
+
+    background_tasks.add_task(_safe_run)
 
     return WebhookResponse(run_id=run_id, status="accepted", entity_count=len(req.entities))
 

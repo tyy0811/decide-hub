@@ -29,6 +29,33 @@ _PERMISSION_TO_AUDIT = {
 }
 
 
+async def _emit_post_insert(
+    entity_id: str, run_id: str, action: str, rule_name: str, permission: str,
+) -> None:
+    """Emit audit event and WS broadcast after a successful idempotent insert.
+
+    Called only when insert_outcome_idempotent returns True, so audit/telemetry
+    reflects committed state transitions only — no false events for duplicates.
+    """
+    await log_audit_event(
+        entity_id=entity_id,
+        run_id=run_id,
+        actor="system",
+        action_type=_PERMISSION_TO_AUDIT.get(permission, "unknown"),
+        action=action,
+        rule_matched=rule_name,
+        permission_result=permission,
+        reason=None,
+    )
+    await ws_manager.broadcast({
+        "event": "entity_processed",
+        "run_id": run_id,
+        "entity_id": entity_id,
+        "action": action,
+        "permission": permission,
+    })
+
+
 async def run_automation_pipeline(
     entities: list[dict],
     run_id: str,
@@ -106,25 +133,6 @@ async def run_automation_pipeline(
             permission = check_permission(action, permissions=permissions)
             permission_results.labels(result=permission).inc()
 
-            if not dry_run:
-                await log_audit_event(
-                    entity_id=entity_id,
-                    run_id=run_id,
-                    actor="system",
-                    action_type=_PERMISSION_TO_AUDIT.get(permission, "unknown"),
-                    action=action,
-                    rule_matched=rule_name,
-                    permission_result=permission,
-                    reason=None,
-                )
-                await ws_manager.broadcast({
-                    "event": "entity_processed",
-                    "run_id": run_id,
-                    "entity_id": entity_id,
-                    "action": action,
-                    "permission": permission,
-                })
-
             if dry_run:
                 action_counts[action] += 1
                 processed += 1
@@ -146,6 +154,7 @@ async def run_automation_pipeline(
                     permission_result="blocked",
                 )
                 if inserted:
+                    await _emit_post_insert(entity_id, run_id, action, rule_name, permission)
                     action_counts[f"{action}:blocked"] += 1
                     processed += 1
                 continue
@@ -165,6 +174,7 @@ async def run_automation_pipeline(
                         proposed_action=action,
                         reason=f"Rule '{rule_name}' matched, requires approval",
                     )
+                    await _emit_post_insert(entity_id, run_id, action, rule_name, permission)
                     action_counts[f"{action}:approval_required"] += 1
                     processed += 1
                 continue
@@ -185,6 +195,7 @@ async def run_automation_pipeline(
                 permission_result="allowed",
             )
             if inserted:
+                await _emit_post_insert(entity_id, run_id, action, rule_name, permission)
                 action_counts[action] += 1
                 processed += 1
 

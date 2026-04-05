@@ -213,11 +213,11 @@ class WebhookResponse(BaseModel):
 
 class EntityRow(BaseModel):
     """Validation model for CSV entity rows."""
-    entity_id: str
+    entity_id: str = Field(min_length=1, description="Non-empty entity identifier")
     company: str = ""
     role: str = ""
     source: str = ""
-    signup_date: str = ""
+    signup_date: str = Field(default="", pattern=r"^(\d{4}-\d{2}-\d{2})?$", description="ISO date (YYYY-MM-DD) or empty")
 
 
 class UploadResponse(BaseModel):
