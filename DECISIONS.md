@@ -283,3 +283,20 @@ The frontend buffers incoming events in a useRef and flushes every
 500ms to prevent React re-rendering 100 times during a 100-entity
 run. On run_completed, it triggers a full REST refetch to ensure
 state consistency.
+
+## 21. Hardcoded users with JWT auth
+
+Authentication uses JWT HS256 with a hardcoded in-memory user store
+(3 users: 2 operators, 1 viewer). Production would use an identity
+provider (OAuth2, SAML). The JWT secret is configurable via
+JWT_SECRET environment variable; the server emits a startup warning
+when using the default secret.
+
+Two roles: operator (can view + approve + trigger automation) and
+viewer (read-only). The approve/reject endpoints thread the JWT
+username into audit events as actor="operator:{username}" — the
+payoff of building the audit trail before auth.
+
+The WebSocket endpoint authenticates via a token query parameter
+(browsers cannot set headers on WebSocket upgrades). Unauthenticated
+connections are rejected with close code 4001.
