@@ -66,9 +66,11 @@ export default function LoginPage() {
         >
           {loading ? "Logging in..." : "Log in"}
         </button>
-        <p className="text-xs text-slate-400 mt-4">
-          See README for demo credentials (local development only).
-        </p>
+        {process.env.NODE_ENV === "development" && (
+          <p className="text-xs text-slate-400 mt-4">
+            See README for demo credentials (local development only).
+          </p>
+        )}
       </form>
     </main>
   );
