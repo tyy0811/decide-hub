@@ -6,7 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -32,6 +32,7 @@ from src.serving.schemas import (
     EvalResultItem, EvalResultsResponse,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
+from src.serving.ws import ws_manager
 from src.serving.rate_limit import SlidingWindowRateLimiter, check_backpressure
 from src.telemetry import db
 from src.telemetry.audit import log_audit_event
@@ -576,3 +577,14 @@ async def get_anomalies(
         baseline_window=len(baseline_rows),
         recent_window=len(recent_rows),
     )
+
+
+@app.websocket("/ws/runs")
+async def websocket_runs(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive; client sends pings
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
