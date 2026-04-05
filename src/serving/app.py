@@ -6,7 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Query, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Path, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -31,6 +31,7 @@ from src.serving.schemas import (
     RunDetailResponse, RunOutcomeItem, AuditEventItem,
     EvalResultItem, EvalResultsResponse,
     LoginRequest, LoginResponse,
+    WebhookRequest, WebhookResponse,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
 from src.serving.auth import authenticate_user, create_token, get_current_user, require_role
@@ -569,6 +570,49 @@ async def get_anomalies(
         baseline_window=len(baseline_rows),
         recent_window=len(recent_rows),
     )
+
+
+@app.post("/webhooks/automate", response_model=WebhookResponse, status_code=202)
+async def webhook_automate(
+    req: WebhookRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(require_role("operator")),
+):
+    """Webhook: accept entities directly, process asynchronously.
+
+    Returns 202 Accepted with run_id. Poll GET /runs/{run_id} for completion.
+    """
+    if not _db_available and not req.dry_run:
+        raise HTTPException(503, "Database not available for non-dry-run")
+
+    if not _automate_limiter.allow():
+        rate_limited_total.labels(endpoint="/webhooks/automate", reason="run_frequency").inc()
+        raise HTTPException(429, detail="Rate limit exceeded",
+                            headers={"Retry-After": str(int(_automate_limiter.retry_after()) + 1)})
+
+    if len(req.entities) > MAX_ENTITIES_PER_RUN:
+        raise HTTPException(422, f"Entity count {len(req.entities)} exceeds maximum {MAX_ENTITIES_PER_RUN}")
+
+    run_id = f"webhook_{uuid.uuid4().hex[:12]}"
+
+    if req.dry_run:
+        # Dry run: execute synchronously (no DB writes)
+        await run_automation_pipeline(
+            entities=req.entities, run_id=run_id, dry_run=True,
+            shadow_rules_config=req.shadow_rules_config,
+        )
+        return WebhookResponse(run_id=run_id, status="accepted", entity_count=len(req.entities))
+
+    # Async execution via BackgroundTasks
+    background_tasks.add_task(
+        run_automation_pipeline,
+        entities=req.entities,
+        run_id=run_id,
+        dry_run=False,
+        shadow_rules_config=req.shadow_rules_config,
+    )
+
+    return WebhookResponse(run_id=run_id, status="accepted", entity_count=len(req.entities))
 
 
 @app.websocket("/ws/runs")

@@ -193,3 +193,17 @@ class LoginResponse(BaseModel):
     token: str
     username: str
     role: str
+
+
+# --- Webhooks ---
+
+class WebhookRequest(BaseModel):
+    entities: list[dict] = Field(min_length=1, description="List of entity dicts to process")
+    dry_run: bool = False
+    shadow_rules_config: str | None = None
+
+
+class WebhookResponse(BaseModel):
+    run_id: str
+    status: str  # "accepted"
+    entity_count: int
