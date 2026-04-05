@@ -223,7 +223,7 @@ async def evaluate(req: EvaluateRequest):
 
 @app.get("/runs/{run_id}", response_model=RunDetailResponse)
 async def get_run_detail_endpoint(
-    run_id: str = Path(pattern=r"^run_[a-f0-9]{12}$"),
+    run_id: str = Path(pattern=r"^(run|webhook|retry)_[a-f0-9_]+$"),
     user: dict = Depends(get_current_user),
 ):
     if not _db_available:
@@ -602,6 +602,10 @@ async def webhook_automate(
             shadow_rules_config=req.shadow_rules_config,
         )
         return WebhookResponse(run_id=run_id, status="accepted", entity_count=len(req.entities))
+
+    # Persist run record before returning 202 — ensures the run_id is
+    # durable and pollable even if the background task never executes.
+    await db.create_run(run_id)
 
     # Async execution via BackgroundTasks
     background_tasks.add_task(

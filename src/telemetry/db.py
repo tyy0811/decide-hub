@@ -66,7 +66,8 @@ async def log_outcome(user_id: int, action: str, reward: float, policy_id: str) 
 async def create_run(run_id: str) -> None:
     pool = get_pool()
     await pool.execute(
-        "INSERT INTO automation_runs (run_id, status) VALUES ($1, 'running')",
+        "INSERT INTO automation_runs (run_id, status) VALUES ($1, 'running') "
+        "ON CONFLICT (run_id) DO NOTHING",
         run_id,
     )
 

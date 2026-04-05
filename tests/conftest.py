@@ -1,8 +1,12 @@
 import asyncio
 import json
+import os
 import asyncpg
 import pytest
 from pathlib import Path
+
+# Allow default JWT secret in tests
+os.environ.setdefault("ALLOW_INSECURE_AUTH", "true")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 

@@ -15,16 +15,21 @@ _DEFAULT_SECRET = "decide-hub-dev-secret-change-in-prod"
 JWT_SECRET = os.environ.get("JWT_SECRET", _DEFAULT_SECRET)
 JWT_ALGORITHM = "HS256"
 
-if JWT_SECRET == _DEFAULT_SECRET:
-    import sys
-    print(
-        "WARNING: using default JWT_SECRET — set JWT_SECRET env var before "
-        "exposing this service. Default credentials are for local development only.",
-        file=sys.stderr,
+# ALLOW_INSECURE_AUTH=true permits default secret + demo users for local dev.
+# Without it, the server refuses to start on the default secret.
+_ALLOW_INSECURE = os.environ.get("ALLOW_INSECURE_AUTH", "").lower() == "true"
+
+if JWT_SECRET == _DEFAULT_SECRET and not _ALLOW_INSECURE:
+    raise RuntimeError(
+        "JWT_SECRET is not set. Refusing to start with the default signing key. "
+        "Set JWT_SECRET to a strong random value, or set ALLOW_INSECURE_AUTH=true "
+        "for local development only."
     )
 
 # Hardcoded users — local development / demo only.
 # Production would use an identity provider (OAuth2, SAML).
+# When JWT_SECRET is explicitly set (non-default), these demo users
+# still work but are only reachable if you know the credentials.
 USERS: dict[str, dict] = {
     "admin": {"password": "admin", "role": "operator"},
     "operator1": {"password": "operator1", "role": "operator"},
