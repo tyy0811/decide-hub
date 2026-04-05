@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface Run {
   run_id: string;
@@ -48,7 +49,7 @@ export default function RunsTable() {
         <tbody>
           {runs.map((run) => (
             <tr key={run.run_id} className="border-b border-gray-100 dark:border-slate-700">
-              <td className="py-2 pr-4 font-mono text-xs text-gray-800 dark:text-slate-200">{run.run_id}</td>
+              <td className="py-2 pr-4 font-mono text-xs"><Link href={`/runs/${run.run_id}`} className="text-blue-600 dark:text-blue-400 hover:underline">{run.run_id}</Link></td>
               <td className="py-2 pr-4">
                 <span
                   className={`px-2 py-0.5 rounded text-xs font-medium ${
