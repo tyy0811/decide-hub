@@ -16,6 +16,7 @@ from src.automations.permissions import check_permission, load_permissions_confi
 from src.evaluation.comparison import compute_action_deltas, total_variation_distance
 from src.telemetry import db
 from src.telemetry.audit import log_audit_event
+from src.serving.ws import ws_manager
 from src.telemetry.metrics import (
     automation_runs, rule_hits, permission_results,
     failed_entities_counter, enrichment_duration,
@@ -56,6 +57,11 @@ async def run_automation_pipeline(
 
     if not dry_run:
         await db.create_run(run_id)
+        await ws_manager.broadcast({
+            "event": "run_started",
+            "run_id": run_id,
+            "entity_count": len(entities),
+        })
 
     processed = 0
     failed = 0
@@ -182,6 +188,14 @@ async def run_automation_pipeline(
                 "rule": rule_name,
             })
 
+            await ws_manager.broadcast({
+                "event": "entity_processed",
+                "run_id": run_id,
+                "entity_id": entity_id,
+                "action": action,
+                "permission": permission,
+            })
+
         except Exception as e:
             failed += 1
             failed_entities_counter.labels(error_type=_error_category).inc()
@@ -223,6 +237,13 @@ async def run_automation_pipeline(
             shadow_tvd=shadow_tvd,
             shadow_action_deltas=shadow_action_deltas_dict,
         )
+        await ws_manager.broadcast({
+            "event": "run_completed",
+            "run_id": run_id,
+            "entities_processed": processed,
+            "entities_failed": failed,
+            "action_distribution": dict(action_counts),
+        })
 
     result = {
         "run_id": run_id,
