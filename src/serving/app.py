@@ -586,5 +586,7 @@ async def websocket_runs(websocket: WebSocket):
         while True:
             # Keep connection alive; client sends pings
             await websocket.receive_text()
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, Exception):
+        pass
+    finally:
         ws_manager.disconnect(websocket)

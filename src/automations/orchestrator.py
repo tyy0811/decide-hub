@@ -117,6 +117,13 @@ async def run_automation_pipeline(
                     permission_result=permission,
                     reason=None,
                 )
+                await ws_manager.broadcast({
+                    "event": "entity_processed",
+                    "run_id": run_id,
+                    "entity_id": entity_id,
+                    "action": action,
+                    "permission": permission,
+                })
 
             if dry_run:
                 action_counts[action] += 1
@@ -186,14 +193,6 @@ async def run_automation_pipeline(
                 "action": action,
                 "permission": permission,
                 "rule": rule_name,
-            })
-
-            await ws_manager.broadcast({
-                "event": "entity_processed",
-                "run_id": run_id,
-                "entity_id": entity_id,
-                "action": action,
-                "permission": permission,
             })
 
         except Exception as e:
