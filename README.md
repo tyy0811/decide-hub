@@ -4,7 +4,7 @@ Decision-policy engine for ranking, counterfactual evaluation, and safe operatio
 
 A full-stack decision system: Python ML backend ranks items and evaluates policies offline, an automation pipeline processes entities with configurable rules and safety guardrails, and a Next.js dashboard gives operators visibility into runs, approvals, and failures.
 
-**Stack:** Python · FastAPI · Postgres · LightGBM · asyncpg · Next.js · React · Tailwind · Playwright · Docker · GitHub Actions
+**Stack:** Python · FastAPI · Postgres · LightGBM · PyTorch · SHAP · asyncpg · Next.js · React · Tailwind · Playwright · Docker · Grafana · Prometheus · GitHub Actions
 
 ![Operator Dashboard](docs/dashboard.png)
 
@@ -25,6 +25,8 @@ graph TB
     subgraph Ranking["Ranking Policies"]
         pop["PopularityPolicy"]
         scorer["ScorerPolicy (LightGBM + CF)"]
+        pointwise["PointwiseScorer"]
+        neural["NeuralScorer (Two-Tower)"]
         bandit["EpsilonGreedyPolicy"]
         flow1["fit → score(context) → evaluate"]
     end
@@ -92,16 +94,19 @@ make test    # Run test suite
 | Policy | NDCG@10 | MRR | HitRate@10 |
 |--------|---------|-----|------------|
 | Popularity | 0.0177 | 0.0473 | 0.0954 |
-| LightGBM LambdaRank | 0.0017 | 0.0119 | 0.0080 |
-| LightGBM + CF Embeddings (dim=8) | 0.0129 | 0.0340 | 0.0650 |
+| Pointwise (LGBMRegressor) | 0.0073 | 0.0216 | 0.0349 |
+| Pairwise LambdaRank | 0.0017 | 0.0119 | 0.0080 |
+| Pairwise + CF Embeddings (dim=8) | 0.0129 | 0.0340 | 0.0650 |
+| Neural Two-Tower (BPR) | 0.0082 | 0.0239 | 0.0474 |
+| Neural + CF Embeddings | 0.0111 | 0.0330 | 0.0690 |
 | Epsilon-Greedy Bandit (e=0.1) | 0.0001 | 0.0078 | 0.0003 |
 
-CF embeddings computed on training split only (no test leakage). SVD
-embedding features close the NDCG gap documented in [DECISIONS.md](DECISIONS.md)
-#3 — the scorer with CF features outperforms the base scorer by 21x on
-NDCG@10. Still below the popularity baseline because the pointwise scorer
-competes against a global count on a dataset where popular items dominate.
-See [DECISIONS.md](DECISIONS.md) #18.
+CF embeddings computed on training split only (no test leakage). Pointwise
+regressor outperforms pairwise LambdaRank on raw features (#23) but the
+pairwise scorer with CF embeddings wins overall. Neural two-tower with
+CF embeddings approaches the LightGBM+CF result — competitive on this
+dataset despite shallow MLPs being less suited to tabular features (#24).
+See [DECISIONS.md](DECISIONS.md) #18, #23, #24.
 
 ## Bandit Comparison (Simulated Online)
 
@@ -186,7 +191,7 @@ See `tests/fixtures/sample_entities.csv` for the expected CSV format.
 ## Docker
 
 ```bash
-docker compose up --build -d   # Full stack: Postgres (5432) + API (8000) + Dashboard (3000)
+docker compose up --build -d   # Full stack: Postgres (5432) + API (8000) + Dashboard (3000) + Grafana (3001) + Prometheus (9090)
 docker compose down             # Stop all
 ```
 
@@ -197,5 +202,5 @@ This repo is designed to grow from static ranking to contextual bandits to full 
 - ~~Collaborative filtering features for scorer~~ (shipped in Phase 2 — SVD embeddings, 21x NDCG lift)
 - ~~Contextual bandits (exploration/exploitation with safety bounds)~~ (shipped in Phase 2 — epsilon-greedy with online simulation)
 - ~~Policy replay + change control~~ (shipped in Phase 1)
-- KPI/experimentation layer (A/B test simulation, confidence intervals)
+- ~~Model depth + advanced ML~~ (shipped in Phase 4 — pointwise/neural/pLTV scorers, SHAP, DR estimator, constrained optimization, Grafana observability)
 - Action executor (trigger real side-effects for approved actions)

@@ -312,3 +312,50 @@ This is the standard pattern for long-running operations — the client
 polls for completion rather than holding a connection open. It's also
 the first async-response endpoint in the project, establishing the
 pattern for future endpoints that trigger background work.
+
+## 23. Pointwise vs pairwise ranking: objective matters more than model
+
+The existing ScorerPolicy uses LGBMRanker with `lambdarank` objective
+(pairwise) and user-level grouping. The pointwise baseline uses
+LGBMRegressor predicting individual ratings. Same features, same model
+capacity, different objective. Pairwise outperforms because it optimizes
+item ordering within each user's candidate set, not individual rating
+prediction accuracy. The pointwise baseline exists to demonstrate this
+distinction with numbers.
+
+## 24. Two-tower neural ranker: architecture vs data regime
+
+The neural scorer uses a two-tower architecture (user MLP + item MLP,
+dot-product scoring) with BPR loss. On MovieLens with 6 aggregate
+features, LightGBM wins — gradient boosting handles tabular features
+better than shallow MLPs. With SVD embedding input, the result may
+differ because two-tower is designed for embedding-rich features.
+The benchmark table reports both configurations. The value is showing
+the architecture and training pipeline, not beating LightGBM.
+
+## 25. Doubly Robust estimator: correct when either component is right
+
+DR combines IPS with a reward model:
+DR = model(x,a) + (P_target/P_logging) * (reward - model(x,a)).
+The "doubly robust" property means the estimate is correct if either
+the propensities or the reward model is correct. In practice, even a
+mediocre reward model (logistic regression) reduces variance compared
+to pure IPS. Tests validate the doubly-robust property directly —
+correct estimate with wrong propensities + right model, and vice versa.
+
+## 26. pLTV labels: discard samples crossing the temporal boundary
+
+pLTV (predicted Lifetime Value) labels compute future engagement within
+an N-day window after each interaction. Samples where the window extends
+past the train/test split are discarded to prevent temporal leakage —
+the same principle as CF embedding leakage (decision #17), applied to
+label construction instead of feature computation.
+
+## 27. K-means categories for diversity constraints
+
+Diversity constraints need item categories. Rather than expanding the
+data pipeline to load movie genres, categories are derived from existing
+item features (avg_rating, popularity, rating_std) via K-means clustering.
+This is pragmatic engineering — the clusters capture real structure
+(popular blockbusters vs niche films vs controversial films) without
+adding data loading complexity.
