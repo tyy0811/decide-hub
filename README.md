@@ -173,7 +173,15 @@ make e2e       # Playwright E2E (requires Postgres + API + Next.js)
 make eval      # Run offline ranking evaluation
 make serve     # Start FastAPI dev server
 make db-reset  # Reset Postgres (destroys data)
+
+# Upload CSV entities (requires auth token)
+curl -X POST http://localhost:8000/automate/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@tests/fixtures/sample_entities.csv" \
+  -F "dry_run=true"
 ```
+
+See `tests/fixtures/sample_entities.csv` for the expected CSV format.
 
 ## Docker
 
