@@ -6,7 +6,8 @@ A full-stack decision system: Python ML backend ranks items and evaluates polici
 
 **Stack:** Python · FastAPI · Postgres · LightGBM · PyTorch · SHAP · asyncpg · Next.js · React · Tailwind · Playwright · Docker · Grafana · Prometheus · GitHub Actions
 
-![Operator Dashboard](docs/dashboard.png)
+![Operator Dashboard — Overview](docs/dashboard.png)
+![Operator Dashboard — Action Distribution & Anomalies](docs/dashboard-bottom.png)
 
 ## Architecture
 
@@ -201,6 +202,9 @@ Multi-page Next.js + React + Tailwind dashboard at `:3000`:
 - **WebSocket live updates** — RunsTable streams entity_processed events in real time
 - **Role-based UI** — Approve/reject buttons visible only to operators
 - **Anomaly indicator** — Green/red status from `/anomalies` endpoint (3 SD z-score drift detection)
+
+![Approval Queue](docs/approvals.png)
+![Policy Comparison](docs/policies.png)
 
 ## Authentication
 
