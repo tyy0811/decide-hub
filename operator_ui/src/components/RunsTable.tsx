@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { authFetch } from "@/lib/auth";
+import { authFetch, getToken } from "@/lib/auth";
 
 interface Run {
   run_id: string;
@@ -39,7 +39,9 @@ export default function RunsTable() {
   }, [fetchRuns]);
 
   useEffect(() => {
-    const WS_URL = API_BASE.replace("http", "ws") + "/ws/runs";
+    const token = getToken();
+    if (!token) return; // Not authenticated — skip WebSocket
+    const WS_URL = API_BASE.replace("http", "ws") + `/ws/runs?token=${encodeURIComponent(token)}`;
     try {
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;

@@ -572,11 +572,18 @@ async def get_anomalies(
 
 
 @app.websocket("/ws/runs")
-async def websocket_runs(websocket: WebSocket):
+async def websocket_runs(websocket: WebSocket, token: str = Query(default="")):
+    """WebSocket endpoint for live run updates. Requires JWT token as query param."""
+    from src.serving.auth import decode_token
+    try:
+        decode_token(token)
+    except (ValueError, Exception):
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
     await ws_manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive; client sends pings
             await websocket.receive_text()
     except (WebSocketDisconnect, Exception):
         pass

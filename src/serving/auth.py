@@ -11,10 +11,20 @@ import jwt
 from fastapi import Depends, HTTPException, Request
 
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "decide-hub-dev-secret-change-in-prod")
+_DEFAULT_SECRET = "decide-hub-dev-secret-change-in-prod"
+JWT_SECRET = os.environ.get("JWT_SECRET", _DEFAULT_SECRET)
 JWT_ALGORITHM = "HS256"
 
-# Hardcoded users — sufficient for a portfolio project
+if JWT_SECRET == _DEFAULT_SECRET:
+    import sys
+    print(
+        "WARNING: using default JWT_SECRET — set JWT_SECRET env var before "
+        "exposing this service. Default credentials are for local development only.",
+        file=sys.stderr,
+    )
+
+# Hardcoded users — local development / demo only.
+# Production would use an identity provider (OAuth2, SAML).
 USERS: dict[str, dict] = {
     "admin": {"password": "admin", "role": "operator"},
     "operator1": {"password": "operator1", "role": "operator"},

@@ -6,7 +6,18 @@ from fastapi.testclient import TestClient
 from src.automations.orchestrator import run_automation_pipeline
 from src.telemetry import db
 from src.serving.app import app
+from src.serving.auth import create_token
 from tests.mock_lead_api import MOCK_LEADS
+
+
+def _operator_headers() -> dict:
+    token = create_token(username="admin", role="operator")
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _viewer_headers() -> dict:
+    token = create_token(username="viewer1", role="viewer")
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.mark.asyncio
@@ -60,54 +71,46 @@ async def test_reject_does_not_execute(db_pool):
     assert email_approval["id"] not in pending_ids
 
 
-def test_approve_endpoint_requires_api_key():
-    """Approve without API key returns 403."""
+def test_approve_endpoint_requires_auth():
+    """Approve without JWT returns 401."""
     with TestClient(app) as client:
         resp = client.post("/approvals/99999/approve")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
-def test_reject_endpoint_requires_api_key():
-    """Reject without API key returns 403."""
+def test_reject_endpoint_requires_auth():
+    """Reject without JWT returns 401."""
     with TestClient(app) as client:
         resp = client.post("/approvals/99999/reject")
+        assert resp.status_code == 401
+
+
+def test_approve_endpoint_viewer_rejected():
+    """Viewer role cannot approve — returns 403."""
+    with TestClient(app) as client:
+        resp = client.post(
+            "/approvals/99999/approve",
+            headers=_viewer_headers(),
+        )
         assert resp.status_code == 403
 
 
-def test_approve_endpoint_wrong_key():
-    """Approve with wrong API key returns 403."""
-    import os
-    old = os.environ.get("OPERATOR_API_KEY")
-    os.environ["OPERATOR_API_KEY"] = "correct-key"
-    try:
-        with TestClient(app) as client:
-            resp = client.post(
-                "/approvals/99999/approve",
-                headers={"X-Operator-Key": "wrong-key"},
-            )
-            assert resp.status_code == 403
-    finally:
-        if old is None:
-            os.environ.pop("OPERATOR_API_KEY", None)
-        else:
-            os.environ["OPERATOR_API_KEY"] = old
+def test_reject_endpoint_viewer_rejected():
+    """Viewer role cannot reject — returns 403."""
+    with TestClient(app) as client:
+        resp = client.post(
+            "/approvals/99999/reject",
+            headers=_viewer_headers(),
+        )
+        assert resp.status_code == 403
 
 
-def test_approve_endpoint_valid_key_reaches_db():
-    """Approve with correct API key passes auth and reaches DB layer."""
-    import os
-    old = os.environ.get("OPERATOR_API_KEY")
-    os.environ["OPERATOR_API_KEY"] = "test-key"
-    try:
-        with TestClient(app) as client:
-            resp = client.post(
-                "/approvals/99999/approve",
-                headers={"X-Operator-Key": "test-key"},
-            )
-            # 404 (approval not found) or 503 (no DB) — not 403
-            assert resp.status_code in (404, 503)
-    finally:
-        if old is None:
-            os.environ.pop("OPERATOR_API_KEY", None)
-        else:
-            os.environ["OPERATOR_API_KEY"] = old
+def test_approve_endpoint_operator_reaches_db():
+    """Operator role passes auth and reaches DB layer."""
+    with TestClient(app) as client:
+        resp = client.post(
+            "/approvals/99999/approve",
+            headers=_operator_headers(),
+        )
+        # 404 (approval not found) or 503 (no DB) — not 401/403
+        assert resp.status_code in (404, 503)
