@@ -9,7 +9,8 @@ class RankRequest(BaseModel):
     user_id: int
     candidate_items: list[int] = Field(default_factory=list, description="Item IDs to rank. If empty, ranks all items.")
     k: int = Field(default=10, ge=1, le=100)
-    policy: str = Field(default="popularity", pattern="^(popularity|scorer)$")
+    policy: str = Field(default="popularity", pattern="^(popularity|scorer|bandit|retrieval|pointwise|neural)$")
+    query: str | None = Field(default=None, description="Query string for retrieval policies")
 
 
 class ScoredItem(BaseModel):
@@ -26,7 +27,7 @@ class RankResponse(BaseModel):
 # --- Evaluation ---
 
 class EvaluateRequest(BaseModel):
-    policy: str = Field(default="popularity", pattern="^(popularity|scorer)$")
+    policy: str = Field(default="popularity", pattern="^(popularity|scorer|bandit|retrieval|pointwise|neural)$")
     k: int = Field(default=10, ge=1, le=100)
 
 
@@ -41,6 +42,7 @@ class EvaluateResponse(BaseModel):
 class AutomateRequest(BaseModel):
     source_url: str = Field(description="URL of entity data source (mock API in tests)")
     dry_run: bool = False
+    shadow_rules_config: str | None = Field(default=None, description="Path to shadow rules YAML for candidate comparison")
 
 
 class EntityResult(BaseModel):
@@ -58,6 +60,8 @@ class AutomateResponse(BaseModel):
     action_distribution: dict[str, int]
     dry_run: bool
     results: list[EntityResult] = Field(default_factory=list)
+    shadow_tvd: float | None = None
+    shadow_action_deltas: dict[str, float] | None = None
 
 
 # --- Approvals ---
@@ -75,6 +79,13 @@ class ApprovalsResponse(BaseModel):
     approvals: list[ApprovalItem]
 
 
+class ApprovalActionResponse(BaseModel):
+    id: int
+    entity_id: str
+    proposed_action: str
+    status: str
+
+
 # --- Runs ---
 
 class RunItem(BaseModel):
@@ -83,6 +94,8 @@ class RunItem(BaseModel):
     entities_processed: int
     entities_failed: int
     action_distribution: dict
+    shadow_tvd: float | None = None
+    shadow_action_deltas: dict[str, float] | None = None
     started_at: str
     completed_at: str | None
 
@@ -103,3 +116,115 @@ class FailedEntityItem(BaseModel):
 class FailedEntitiesResponse(BaseModel):
     failed_entities: list[FailedEntityItem]
     total: int
+
+
+class RetryResponse(BaseModel):
+    retried: int
+    succeeded: int
+    dead_lettered: int
+    still_failing: int
+
+
+# --- Anomalies ---
+
+class AnomalyItem(BaseModel):
+    metric: str
+    observed: float
+    expected_range: str
+    severity: str
+    z_score: float | None = None
+
+
+class AnomalyResponse(BaseModel):
+    status: str  # "ok" or "alert"
+    anomalies: list[AnomalyItem]
+    baseline_window: int
+    recent_window: int
+
+
+# --- Run Detail ---
+
+class RunOutcomeItem(BaseModel):
+    entity_id: str
+    action_taken: str
+    rule_matched: str | None
+    permission_result: str
+
+
+class AuditEventItem(BaseModel):
+    entity_id: str
+    actor: str
+    action_type: str
+    reason: str | None
+
+
+class RunDetailResponse(BaseModel):
+    run_id: str
+    status: str
+    entities_processed: int
+    entities_failed: int
+    action_distribution: dict
+    started_at: str
+    completed_at: str | None
+    outcomes: list[RunOutcomeItem]
+    audit_events: list[AuditEventItem]
+
+
+# --- Evaluation Results Cache ---
+
+class EvalResultItem(BaseModel):
+    policy: str
+    k: int
+    metrics: dict[str, float]
+
+
+class EvalResultsResponse(BaseModel):
+    results: list[EvalResultItem]
+
+
+# --- Auth ---
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    token: str
+    username: str
+    role: str
+
+
+# --- Webhooks ---
+
+class WebhookRequest(BaseModel):
+    entities: list[dict] = Field(min_length=1, description="List of entity dicts to process")
+    dry_run: bool = False
+    shadow_rules_config: str | None = None
+
+
+class WebhookResponse(BaseModel):
+    run_id: str
+    status: str  # "accepted"
+    entity_count: int
+
+
+# --- CSV Upload ---
+
+class EntityRow(BaseModel):
+    """Validation model for CSV entity rows."""
+    entity_id: str = Field(min_length=1, description="Non-empty entity identifier")
+    company: str = ""
+    role: str = ""
+    source: str = ""
+    signup_date: str = Field(default="", pattern=r"^(\d{4}-\d{2}-\d{2})?$", description="ISO date (YYYY-MM-DD) or empty")
+
+
+class UploadResponse(BaseModel):
+    run_id: str
+    status: str
+    entities_uploaded: int
+    entities_processed: int
+    entities_failed: int
+    dry_run: bool
+    validation_errors: list[str] = Field(default_factory=list)

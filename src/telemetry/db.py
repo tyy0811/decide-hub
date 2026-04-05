@@ -1,7 +1,9 @@
 """asyncpg database layer — pool + parameterized query helpers."""
 
+import asyncio
 import json
 import asyncpg
+import yaml
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -64,7 +66,8 @@ async def log_outcome(user_id: int, action: str, reward: float, policy_id: str) 
 async def create_run(run_id: str) -> None:
     pool = get_pool()
     await pool.execute(
-        "INSERT INTO automation_runs (run_id, status) VALUES ($1, 'running')",
+        "INSERT INTO automation_runs (run_id, status) VALUES ($1, 'running') "
+        "ON CONFLICT (run_id) DO NOTHING",
         run_id,
     )
 
@@ -74,16 +77,41 @@ async def complete_run(
     entities_processed: int,
     entities_failed: int,
     action_distribution: dict,
+    shadow_tvd: float | None = None,
+    shadow_action_deltas: dict | None = None,
 ) -> None:
     pool = get_pool()
     await pool.execute(
         "UPDATE automation_runs SET status = 'completed', "
         "entities_processed = $2, entities_failed = $3, "
-        "action_distribution = $4, completed_at = NOW() "
+        "action_distribution = $4, shadow_tvd = $5, "
+        "shadow_action_deltas = $6, completed_at = NOW() "
         "WHERE run_id = $1",
         run_id, entities_processed, entities_failed,
-        action_distribution,
+        action_distribution, shadow_tvd, shadow_action_deltas,
     )
+
+
+async def recover_abandoned_runs(stale_minutes: int = 30) -> int:
+    """Mark stale 'running' rows as failed on startup.
+
+    Webhook runs persisted as 'running' before the background task executes
+    can be orphaned if the process crashes. This reclaims them so polling
+    clients see a terminal state instead of hanging forever.
+
+    Returns the number of recovered rows.
+    """
+    pool = get_pool()
+    result = await pool.execute(
+        "UPDATE automation_runs SET status = 'failed', "
+        "completed_at = NOW() "
+        "WHERE status = 'running' "
+        "AND started_at < NOW() - make_interval(mins => $1)",
+        stale_minutes,
+    )
+    # result is "UPDATE N"
+    count = int(result.split()[-1])
+    return count
 
 
 async def get_runs(limit: int = 20) -> list[dict]:
@@ -137,17 +165,85 @@ async def get_pending_approvals() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_approval_by_id(approval_id: int) -> dict | None:
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "SELECT * FROM pending_approvals WHERE id = $1", approval_id,
+    )
+    return dict(row) if row else None
+
+
+_VALID_APPROVAL_STATUSES = ("approved", "rejected")
+
+
+async def update_approval_status(approval_id: int, status: str) -> None:
+    if status not in _VALID_APPROVAL_STATUSES:
+        raise ValueError(f"Invalid approval status: {status!r}. Must be one of {_VALID_APPROVAL_STATUSES}")
+    pool = get_pool()
+    await pool.execute(
+        "UPDATE pending_approvals SET status = $1 WHERE id = $2",
+        status, approval_id,
+    )
+
+
+async def claim_approval(approval_id: int, new_status: str) -> dict | None:
+    """Atomically transition approval from 'pending' to new_status.
+
+    Returns the approval row if transition succeeded, None if not found
+    or already acted on. Eliminates TOCTOU race vs separate read+check+update.
+    """
+    if new_status not in _VALID_APPROVAL_STATUSES:
+        raise ValueError(f"Invalid approval status: {new_status!r}. Must be one of {_VALID_APPROVAL_STATUSES}")
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "UPDATE pending_approvals SET status = $1 "
+        "WHERE id = $2 AND status = 'pending' RETURNING *",
+        new_status, approval_id,
+    )
+    return dict(row) if row else None
+
+
 # --- Failed entities ---
 
 async def log_failed_entity(
     entity_id: str, run_id: str, error_type: str, error_message: str,
+    entity_data: dict | None = None,
 ) -> None:
     pool = get_pool()
+    max_retries = _get_max_retries(error_type)
+    status = "dead_letter" if max_retries == 0 else "failed"
     await pool.execute(
-        "INSERT INTO failed_entities (entity_id, run_id, error_type, error_message) "
-        "VALUES ($1, $2, $3, $4)",
+        "INSERT INTO failed_entities "
+        "(entity_id, run_id, error_type, error_message, max_retries, status, entity_data) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
         entity_id, run_id, error_type, error_message,
+        max_retries, status, entity_data,
     )
+
+
+_retry_config: dict | None = None
+
+
+def _reset_retry_config() -> None:
+    """Clear cached retry config. Call in test teardown to prevent test infection."""
+    global _retry_config
+    _retry_config = None
+
+
+def _get_max_retries(error_type: str) -> int:
+    """Look up max_retries for an error type from retry config (cached)."""
+    global _retry_config
+    if _retry_config is None:
+        config_path = Path(__file__).resolve().parent.parent / "automations" / "retry_config.yml"
+        try:
+            with open(config_path) as f:
+                _retry_config = yaml.safe_load(f)
+        except Exception:
+            return 0
+    policies = _retry_config.get("retry_policies", {})
+    if error_type in policies:
+        return policies[error_type].get("max_retries", 0)
+    return policies.get("default", {}).get("max_retries", 0)
 
 
 async def get_failed_entities(run_id: str | None = None) -> list[dict]:
@@ -163,6 +259,37 @@ async def get_failed_entities(run_id: str | None = None) -> list[dict]:
             "SELECT * FROM failed_entities ORDER BY created_at DESC LIMIT 100",
         )
     return [dict(r) for r in rows]
+
+
+async def get_retryable_entities() -> list[dict]:
+    """Get entities eligible for retry (status='failed', retry_count < max_retries)."""
+    pool = get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM failed_entities "
+        "WHERE status = 'failed' AND retry_count < max_retries "
+        "ORDER BY created_at ASC",
+    )
+    return [dict(r) for r in rows]
+
+
+async def increment_retry_count(entity_row_id: int) -> str:
+    """Increment retry count. If at max, set status to dead_letter.
+
+    Returns the new status ('failed' or 'dead_letter').
+    """
+    pool = get_pool()
+    row = await pool.fetchrow(
+        "UPDATE failed_entities SET retry_count = retry_count + 1, "
+        "status = CASE WHEN retry_count + 1 >= max_retries THEN 'dead_letter' ELSE 'failed' END "
+        "WHERE id = $1 RETURNING status",
+        entity_row_id,
+    )
+    return row["status"] if row else "failed"
+
+
+async def delete_failed_entity(entity_row_id: int) -> None:
+    pool = get_pool()
+    await pool.execute("DELETE FROM failed_entities WHERE id = $1", entity_row_id)
 
 
 # --- Idempotency ---
@@ -192,3 +319,61 @@ async def insert_outcome_idempotent(
     )
     # asyncpg returns "INSERT 0 1" on success, "INSERT 0 0" on conflict
     return result == "INSERT 0 1"
+
+
+# --- Shadow outcomes ---
+
+async def insert_shadow_outcome(
+    run_id: str,
+    entity_id: str,
+    production_action: str,
+    shadow_action: str,
+    production_rule: str,
+    shadow_rule: str,
+) -> None:
+    pool = get_pool()
+    await pool.execute(
+        "INSERT INTO shadow_outcomes "
+        "(run_id, entity_id, production_action, shadow_action, "
+        "production_rule, shadow_rule, diverged) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        run_id, entity_id, production_action, shadow_action,
+        production_rule, shadow_rule,
+        production_action != shadow_action,
+    )
+
+
+async def get_shadow_outcomes(run_id: str) -> list[dict]:
+    pool = get_pool()
+    rows = await pool.fetch(
+        "SELECT * FROM shadow_outcomes WHERE run_id = $1 ORDER BY id",
+        run_id,
+    )
+    return [dict(r) for r in rows]
+
+
+async def get_run_detail(run_id: str) -> dict | None:
+    """Get a single run with its entity-level outcomes."""
+    pool = get_pool()
+    run = await pool.fetchrow(
+        "SELECT * FROM automation_runs WHERE run_id = $1", run_id,
+    )
+    if not run:
+        return None
+    outcomes, audits = await asyncio.gather(
+        pool.fetch(
+            "SELECT entity_id, action_taken, rule_matched, permission_result "
+            "FROM automation_outcomes WHERE run_id = $1 ORDER BY created_at",
+            run_id,
+        ),
+        pool.fetch(
+            "SELECT entity_id, actor, action_type, reason "
+            "FROM action_audit_log WHERE run_id = $1 ORDER BY created_at",
+            run_id,
+        ),
+    )
+    return {
+        **dict(run),
+        "outcomes": [dict(r) for r in outcomes],
+        "audit_events": [dict(r) for r in audits],
+    }

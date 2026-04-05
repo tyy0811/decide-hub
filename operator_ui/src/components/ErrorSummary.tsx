@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 
 interface FailedEntity {
   entity_id: string;
@@ -16,7 +17,7 @@ export default function ErrorSummary() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/failed-entities`)
+    authFetch(`${API_BASE}/failed-entities`)
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`);
         return r.json();

@@ -1,5 +1,5 @@
 import pytest
-from src.evaluation.naive import ndcg_at_k, mrr, hit_rate_at_k
+from src.evaluation.naive import ndcg_at_k, graded_ndcg_at_k, mrr, hit_rate_at_k
 
 
 def test_ndcg_perfect_ranking():
@@ -37,6 +37,30 @@ def test_ndcg_multiple_relevant():
     relevant = {1, 2}
     result = ndcg_at_k(ranked, relevant, k=5)
     assert result == 1.0  # Both relevant items at positions 1,2 — ideal ordering
+
+
+def test_graded_ndcg_uses_grades():
+    """Grade-3 doc at position 1 scores higher than grade-1 doc at position 1."""
+    ranked = [1, 2, 3]
+    # Grade 3 at position 1 — gain = 2^3 - 1 = 7
+    high_grade = graded_ndcg_at_k(ranked, {1: 3, 2: 1}, k=3)
+    # Grade 1 at position 1, grade 3 at position 2 — suboptimal ordering
+    ranked_swap = [2, 1, 3]
+    low_grade = graded_ndcg_at_k(ranked_swap, {1: 3, 2: 1}, k=3)
+    assert high_grade > low_grade
+
+
+def test_graded_ndcg_perfect_ranking():
+    """Items ordered by descending grade should give NDCG = 1.0."""
+    # Grades: 1->3, 2->2, 3->1. Perfect order: [1, 2, 3]
+    ranked = [1, 2, 3, 4, 5]
+    grades = {1: 3, 2: 2, 3: 1}
+    assert graded_ndcg_at_k(ranked, grades, k=5) == 1.0
+
+
+def test_graded_ndcg_empty_grades():
+    """Empty grades returns 0."""
+    assert graded_ndcg_at_k([1, 2, 3], {}, k=3) == 0.0
 
 
 def test_mrr_first_position():

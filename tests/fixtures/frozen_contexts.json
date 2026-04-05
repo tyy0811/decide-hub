@@ -1,0 +1,2412 @@
+[
+  {
+    "entity": {
+      "entity_id": "frozen_001",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_001",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_002",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_002",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_003",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_003",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_004",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_004",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_005",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_005",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_006",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_006",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_007",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_007",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_008",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_008",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_009",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_009",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_010",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_010",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_011",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_011",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_012",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_012",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_013",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_013",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_014",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_014",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_015",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_015",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_016",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_016",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_017",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_017",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_018",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_018",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_019",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_019",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_020",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_020",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_021",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_021",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_022",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_022",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_023",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_023",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_024",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_024",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_025",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_025",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_026",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_026",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_027",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_027",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_028",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_028",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_029",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_029",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_030",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_030",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_031",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_031",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_032",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_032",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_033",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_033",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_034",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_034",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_035",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_035",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_036",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_036",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_037",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_037",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_038",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_038",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_039",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_039",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_040",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_040",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_041",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_041",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_042",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_042",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_043",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_043",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_044",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_044",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_045",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_045",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_046",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_046",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_047",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_047",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_048",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_048",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_049",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_049",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_050",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_050",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_051",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_051",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_052",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_052",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_053",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_053",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_054",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_054",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_055",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_055",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_056",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_056",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_057",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_057",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_058",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_058",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_059",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_059",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_060",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_060",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_061",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_061",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_062",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_062",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_063",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_063",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_064",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_064",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_065",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_065",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_066",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_066",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_067",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_067",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_068",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_068",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_069",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_069",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_070",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_070",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_071",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_071",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_072",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_072",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_073",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_073",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_074",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_074",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_075",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_075",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_076",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_076",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_077",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_077",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_078",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_078",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_079",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_079",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_080",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_080",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_081",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_081",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_082",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_082",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_083",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_083",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_084",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_084",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_085",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_085",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_086",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_086",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_087",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_087",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_088",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_088",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_089",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_089",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_090",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_090",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_091",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20"
+    },
+    "enriched": {
+      "entity_id": "frozen_091",
+      "company": "TechCorp",
+      "role": "CTO",
+      "source": "organic",
+      "signup_date": "2026-03-20",
+      "company_size_bucket": "mid",
+      "lead_score": 80,
+      "days_since_signup": 14,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_092",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_092",
+      "company": "StartupInc",
+      "role": "Engineer",
+      "source": "referral",
+      "signup_date": "2026-04-01",
+      "company_size_bucket": "small",
+      "lead_score": 60,
+      "days_since_signup": 2,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_093",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_093",
+      "company": "",
+      "role": "PM",
+      "source": "paid_ad",
+      "signup_date": "2025-06-15",
+      "company_size_bucket": "unknown",
+      "lead_score": 25,
+      "days_since_signup": 292,
+      "source_quality_tier": "medium",
+      "has_missing_fields": true,
+      "request_email": false
+    },
+    "action": "flag_for_review",
+    "rule_matched": "missing_fields"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_094",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_094",
+      "company": "OldCo",
+      "role": "Intern",
+      "source": "cold_outbound",
+      "signup_date": "2024-01-01",
+      "company_size_bucket": "small",
+      "lead_score": 10,
+      "days_since_signup": 823,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "delete_lead",
+    "rule_matched": "stale_cold_lead"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_095",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "request_email": true
+    },
+    "enriched": {
+      "entity_id": "frozen_095",
+      "company": "BigEnterprise",
+      "role": "VP Sales",
+      "source": "organic",
+      "signup_date": "2026-03-28",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 6,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": true
+    },
+    "action": "send_external_email",
+    "rule_matched": "request_email"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_096",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25"
+    },
+    "enriched": {
+      "entity_id": "frozen_096",
+      "company": "TechCorp",
+      "role": "Director",
+      "source": "organic",
+      "signup_date": "2026-03-25",
+      "company_size_bucket": "mid",
+      "lead_score": 70,
+      "days_since_signup": 9,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_097",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_097",
+      "company": "StartupInc",
+      "role": "Manager",
+      "source": "paid_ad",
+      "signup_date": "2026-03-15",
+      "company_size_bucket": "small",
+      "lead_score": 45,
+      "days_since_signup": 19,
+      "source_quality_tier": "medium",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_098",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02"
+    },
+    "enriched": {
+      "entity_id": "frozen_098",
+      "company": "BigEnterprise",
+      "role": "CEO",
+      "source": "referral",
+      "signup_date": "2026-04-02",
+      "company_size_bucket": "enterprise",
+      "lead_score": 95,
+      "days_since_signup": 1,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "priority_outreach",
+    "rule_matched": "high_value_recent"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_099",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01"
+    },
+    "enriched": {
+      "entity_id": "frozen_099",
+      "company": "OldCo",
+      "role": "Engineer",
+      "source": "cold_outbound",
+      "signup_date": "2025-12-01",
+      "company_size_bucket": "small",
+      "lead_score": 15,
+      "days_since_signup": 123,
+      "source_quality_tier": "low",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "deprioritize",
+    "rule_matched": "low_value_old"
+  },
+  {
+    "entity": {
+      "entity_id": "frozen_100",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15"
+    },
+    "enriched": {
+      "entity_id": "frozen_100",
+      "company": "TechCorp",
+      "role": "Founder",
+      "source": "organic",
+      "signup_date": "2026-01-15",
+      "company_size_bucket": "mid",
+      "lead_score": 65,
+      "days_since_signup": 78,
+      "source_quality_tier": "high",
+      "has_missing_fields": false,
+      "request_email": false
+    },
+    "action": "standard_sequence",
+    "rule_matched": "medium_value"
+  }
+]

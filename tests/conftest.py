@@ -1,8 +1,12 @@
 import asyncio
 import json
+import os
 import asyncpg
 import pytest
 from pathlib import Path
+
+# Allow default JWT secret in tests
+os.environ.setdefault("ALLOW_INSECURE_AUTH", "true")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -34,11 +38,13 @@ async def db_pool():
     async with pool.acquire() as conn:
         await conn.execute(schema_sql)
     yield pool
-    # Truncate all tables after test
+    # Truncate all tables and reset caches after test
     async with pool.acquire() as conn:
         await conn.execute(
             "TRUNCATE outcomes, automation_outcomes, pending_approvals, "
-            "failed_entities CASCADE"
+            "failed_entities, shadow_outcomes, action_audit_log CASCADE"
         )
         await conn.execute("DELETE FROM automation_runs")
+    from src.telemetry.db import _reset_retry_config
+    _reset_retry_config()
     await pool.close()

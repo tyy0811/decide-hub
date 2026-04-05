@@ -120,3 +120,242 @@ execute -> log) have genuinely different shapes. They share the real common
 ground: `telemetry/db.py`, `telemetry/metrics.py`, Postgres schema, and
 CI gates. The shared infrastructure is the connection, not a base class
 that papers over different decision shapes.
+
+## 13. Policy replay for change control
+
+A policy change that improves average reward by 2% but changes 40% of
+individual decisions needs human review — the aggregate metric hides
+distributional shift.
+
+The replay runner (`src/evaluation/replay.py`) loads 100 frozen
+context-action pairs and re-runs them through the candidate rules config.
+It measures Total Variation Distance (TVD) between the baseline and
+candidate action distributions. CI fails if TVD exceeds 0.15 (15% shift).
+
+TVD provides the single-number CI gate. Per-action deltas provide the
+debugging output (which specific actions shifted and by how much).
+Per-entity changes list exactly which entities would receive different
+treatment, with the candidate rule that fired.
+
+Set `ALLOW_DRIFT=true` to override for intentional rule changes after
+human review. This escape hatch exists because not all drift is bad —
+but all drift should be acknowledged.
+
+## 14. Shadow mode for safe policy deployment
+
+Shadow mode lets you evaluate a new policy on live traffic without risk —
+the candidate policy observes but never executes.
+
+The shadow fork happens after enrichment: same enriched entities go through
+both production and candidate rules. Permissions are NOT applied to the
+shadow side — shadow logs raw rule output so you can see what the candidate
+rules would route, even for actions that permissions would block. The
+comparison surface is pre-permission rule output, which isolates the
+variable shadow mode exists to test: rule changes.
+
+Shadow data is stored in `shadow_outcomes` with a per-entity row and a
+`diverged` boolean for cheap filtering. Distribution comparison uses the
+same TVD + per-action delta functions as the offline replay runner.
+
+## 15. Epsilon-greedy bandit with in-memory arm state
+
+The bandit maintains per-arm reward estimates (`arm_rewards`, `arm_counts`)
+in memory on the policy instance, updated via `update(item_id, reward)`.
+Server restart resets all estimates to the warm-start values from training
+data. Persistent bandit state (Redis, database) is a V3 concern — V2
+demonstrates the algorithm and evaluation, not production statefulness.
+
+Epsilon is hard-capped at `max_epsilon=0.10`. This limits exploration to
+10% of interactions, analogous to how the permissions layer limits what
+actions the automation pipeline can take. The cap is configurable but
+exists to prevent unbounded random behavior.
+
+Warm-start normalizes MovieLens ratings from [1, 5] to [0, 1] via
+`(rating - 1) / 4`. The `update()` method validates that rewards are in
+[0, 1], enforcing scale consistency at the mutation boundary so mixing
+warm-start and online feedback never corrupts estimates.
+
+Evaluation uses `_exploit_scores()` — a pure method that ranks by arm
+estimates without touching `self.epsilon` or the RNG. This avoids mutating
+the live singleton in `_policies` during `/evaluate` requests, which would
+otherwise cause concurrent `/rank` requests to observe epsilon=0 and stop
+exploring. The non-mutating path also eliminates the need for
+try/finally restoration.
+
+The bandit comparison module simulates online interaction rounds against
+a static best-arm baseline. The environment uses per-arm bias (linspace
+-3 to +3) so arms have genuinely different expected rewards — without
+bias, symmetry makes every arm average ~0.5, leaving nothing to learn.
+The static policy picks a single arm with the highest estimated marginal
+reward (from a warmup phase) and never adapts. The comparison produces
+cumulative reward curves: the bandit's ability to learn gives it a
+substantial advantage (+4669 reward over 10K rounds in the default config).
+
+## 16. TF-IDF retrieval over FAISS for a 30-document corpus
+
+The retrieval policy uses scikit-learn's TfidfVectorizer + cosine
+similarity, not FAISS or BM25. Adding a vector index dependency to
+rank 30 documents would be engineering theater. The portfolio story is
+"same harness, different domain" — the retrieval implementation is the
+least important part. What matters is that the same BasePolicy interface,
+evaluation metrics (NDCG/MRR/HitRate), and CI regression gates apply to
+document retrieval identically to item ranking.
+
+The corpus uses graded relevance (3/2/1) with deliberate vocabulary
+overlap between documents. Evaluation uses `graded_ndcg_at_k` which
+computes gain as `2^grade - 1`, so a grade-3 document contributes 7x
+the gain of a grade-1 document. This produces realistic NDCG@10 scores
+(0.93 on the current corpus) rather than trivial 1.0. MRR and HitRate
+remain binary metrics — they are inherently binary by definition.
+
+The corpus lives in `tests/fixtures/` because it is a test fixture, not
+production data. The app loads it conditionally (`if corpus_path.exists()`)
+and skips registration when absent. A production retrieval system would
+load documents from a database or index — that is out of scope for V2.
+
+## 17. Bootstrap CIs without p-values for experimentation
+
+The experiment engine reports confidence intervals and effect sizes
+only — no p-values. CIs communicate the same information (whether the
+interval excludes zero tells you significance) while also communicating
+effect magnitude and uncertainty range. P-values encourage binary
+yes/no thinking that discards useful information about effect size.
+
+The bootstrap CI implementation is validated with a coverage test:
+generate data with a known true effect, run 200 experiments, verify
+95% CIs contain the true effect ~95% of the time. This proves the
+implementation is calibrated, not just that it returns two numbers.
+
+The confidence level flows end-to-end: `run_experiment()` stores it in
+the result dict, and `render_markdown()` reads it from there. This
+prevents metadata drift where a caller runs an 80% CI but the report
+labels it as 95%.
+
+## 18. CF embeddings on training split only — no data leakage
+
+Collaborative filtering embeddings are computed via truncated SVD on
+the training-split user-item interaction matrix. Including test
+interactions would leak collaborative signal — the CF equivalent of
+entity memorization.
+
+The embeddings are concatenated to the existing 6 aggregate features
+and fed to the same LightGBM LambdaRank model. The scorer's
+`use_embeddings` flag is opt-in and backward compatible — the default
+scorer is unchanged.
+
+Cold-start users (not in training data) receive zero embedding vectors.
+The benchmark table reports NDCG separately for warm users (who have
+embeddings from training data) and cold-start users (who get zero
+vectors). If the improvement only comes from warm users, that's an
+honest finding showing the limitation of CF features for cold-start
+users, not a failure of the approach.
+
+## 19. Anomaly detection at 3 SD threshold
+
+Anomaly detection uses z-scores on action category proportions,
+comparing the last 5 runs against the preceding 20 runs. The threshold
+is 3 standard deviations (not 2) because small sample sizes (5 runs
+of 20-50 entities) make 2 SD too sensitive — a single unusual run
+triggers a false alert. 3 SD reduces false positives while still
+catching real distributional shifts.
+
+Both distribution drift and error-rate spike checks operate on the
+same set of runs from a single query, preventing inconsistent windows
+that could suppress one check while triggering the other.
+
+The `/anomalies` endpoint is public (no auth required) while
+approval-changing endpoints require operator auth. This is intentional:
+anomaly status is read-only operational visibility — it shows whether
+something looks wrong, but cannot change system state. Approval
+endpoints mutate the action queue and must be gated. The distinction
+mirrors standard practice: monitoring dashboards are public within the
+network, admin actions require authentication.
+
+## 20. In-process WebSocket broadcast for live dashboard updates
+
+WebSocket events (run_started, entity_processed, run_completed) are
+broadcast to all connected dashboard clients during automation runs.
+The connection manager is an in-process set — no Redis pub/sub.
+Multi-process deployment would need a message broker, which is a
+deployment concern, not a design concern.
+
+The frontend buffers incoming events in a useRef and flushes every
+500ms to prevent React re-rendering 100 times during a 100-entity
+run. On run_completed, it triggers a full REST refetch to ensure
+state consistency.
+
+## 21. Hardcoded users with JWT auth
+
+Authentication uses JWT HS256 with a hardcoded in-memory user store
+(3 users: 2 operators, 1 viewer). Production would use an identity
+provider (OAuth2, SAML). The JWT secret is configurable via
+JWT_SECRET environment variable; the server emits a startup warning
+when using the default secret.
+
+Two roles: operator (can view + approve + trigger automation) and
+viewer (read-only). The approve/reject endpoints thread the JWT
+username into audit events as actor="operator:{username}" — the
+payoff of building the audit trail before auth.
+
+The WebSocket endpoint authenticates via a token query parameter
+(browsers cannot set headers on WebSocket upgrades). Unauthenticated
+connections are rejected with close code 4001.
+
+## 22. Webhook returns 202 Accepted for async processing
+
+The webhook endpoint (`POST /webhooks/automate`) accepts entities
+directly (bypassing the crawler) and returns 202 Accepted with a
+run_id immediately. The pipeline runs asynchronously via FastAPI
+BackgroundTasks. The caller polls `GET /runs/{run_id}` for completion.
+
+This is the standard pattern for long-running operations — the client
+polls for completion rather than holding a connection open. It's also
+the first async-response endpoint in the project, establishing the
+pattern for future endpoints that trigger background work.
+
+## 23. Pointwise vs pairwise ranking: objective matters more than model
+
+The existing ScorerPolicy uses LGBMRanker with `lambdarank` objective
+(pairwise) and user-level grouping. The pointwise baseline uses
+LGBMRegressor predicting individual ratings. Same features, same model
+capacity, different objective. Pairwise outperforms because it optimizes
+item ordering within each user's candidate set, not individual rating
+prediction accuracy. The pointwise baseline exists to demonstrate this
+distinction with numbers.
+
+## 24. Two-tower neural ranker: architecture vs data regime
+
+The neural scorer uses a two-tower architecture (user MLP + item MLP,
+dot-product scoring) with BPR loss. On MovieLens with 6 aggregate
+features, LightGBM wins — gradient boosting handles tabular features
+better than shallow MLPs. With SVD embedding input, the result may
+differ because two-tower is designed for embedding-rich features.
+The benchmark table reports both configurations. The value is showing
+the architecture and training pipeline, not beating LightGBM.
+
+## 25. Doubly Robust estimator: correct when either component is right
+
+DR combines IPS with a reward model:
+DR = model(x,a) + (P_target/P_logging) * (reward - model(x,a)).
+The "doubly robust" property means the estimate is correct if either
+the propensities or the reward model is correct. In practice, even a
+mediocre reward model (logistic regression) reduces variance compared
+to pure IPS. Tests validate the doubly-robust property directly —
+correct estimate with wrong propensities + right model, and vice versa.
+
+## 26. pLTV labels: discard samples crossing the temporal boundary
+
+pLTV (predicted Lifetime Value) labels compute future engagement within
+an N-day window after each interaction. Samples where the window extends
+past the train/test split are discarded to prevent temporal leakage —
+the same principle as CF embedding leakage (decision #17), applied to
+label construction instead of feature computation.
+
+## 27. K-means categories for diversity constraints
+
+Diversity constraints need item categories. Rather than expanding the
+data pipeline to load movie genres, categories are derived from existing
+item features (avg_rating, popularity, rating_std) via K-means clustering.
+This is pragmatic engineering — the clusters capture real structure
+(popular blockbusters vs niche films vs controversial films) without
+adding data loading complexity.

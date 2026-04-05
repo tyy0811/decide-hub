@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS automation_runs (
     entities_processed INTEGER DEFAULT 0,
     entities_failed INTEGER DEFAULT 0,
     action_distribution JSONB DEFAULT '{}',
+    shadow_tvd REAL,
+    shadow_action_deltas JSONB,
     started_at TIMESTAMPTZ DEFAULT NOW(),
     completed_at TIMESTAMPTZ
 );
@@ -49,6 +51,9 @@ CREATE TABLE IF NOT EXISTS failed_entities (
     error_type TEXT NOT NULL,
     error_message TEXT,
     retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'failed',
+    entity_data JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -59,3 +64,48 @@ CREATE INDEX IF NOT EXISTS idx_automation_outcomes_run_id ON automation_outcomes
 CREATE INDEX IF NOT EXISTS idx_automation_outcomes_entity_id ON automation_outcomes(entity_id);
 CREATE INDEX IF NOT EXISTS idx_pending_approvals_status ON pending_approvals(status);
 CREATE INDEX IF NOT EXISTS idx_failed_entities_run_id ON failed_entities(run_id);
+
+-- Shadow mode: candidate policy comparison
+CREATE TABLE IF NOT EXISTS shadow_outcomes (
+    id SERIAL PRIMARY KEY,
+    run_id TEXT REFERENCES automation_runs(run_id),
+    entity_id TEXT NOT NULL,
+    production_action TEXT NOT NULL,
+    shadow_action TEXT NOT NULL,
+    production_rule TEXT NOT NULL,
+    shadow_rule TEXT NOT NULL,
+    diverged BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_shadow_outcomes_run ON shadow_outcomes(run_id);
+
+-- Audit trail: every action decision logged with reason
+CREATE TABLE IF NOT EXISTS action_audit_log (
+    id SERIAL PRIMARY KEY,
+    entity_id TEXT,
+    -- No FK: audit events may reference synthetic run_ids (e.g., approval_123)
+    run_id TEXT,
+    actor TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    action TEXT NOT NULL,
+    rule_matched TEXT,
+    permission_result TEXT,
+    reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON action_audit_log(entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_run ON action_audit_log(run_id);
+CREATE INDEX IF NOT EXISTS idx_audit_type ON action_audit_log(action_type);
+
+-- Migration path: add retry columns to existing failed_entities tables.
+-- These columns are already in the CREATE TABLE above for fresh installs.
+ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS max_retries INTEGER DEFAULT 0;
+ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'failed';
+ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS entity_data JSONB;
+
+-- Migration: add shadow summary columns to automation_runs
+ALTER TABLE automation_runs ADD COLUMN IF NOT EXISTS shadow_tvd REAL;
+ALTER TABLE automation_runs ADD COLUMN IF NOT EXISTS shadow_action_deltas JSONB;
+
+-- Backpressure query index
+CREATE INDEX IF NOT EXISTS idx_outcomes_created ON automation_outcomes(created_at);

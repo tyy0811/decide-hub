@@ -46,6 +46,13 @@ enrichment_duration = Histogram(
     "Entity enrichment duration",
 )
 
+# --- Rate limiting ---
+rate_limited_total = Counter(
+    "decidehub_rate_limited_total",
+    "Requests rejected by rate limiting",
+    ["endpoint", "reason"],  # reason: "run_frequency", "backpressure"
+)
+
 
 def get_metrics() -> bytes:
     """Return Prometheus metrics in exposition format."""
