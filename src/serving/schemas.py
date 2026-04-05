@@ -207,3 +207,24 @@ class WebhookResponse(BaseModel):
     run_id: str
     status: str  # "accepted"
     entity_count: int
+
+
+# --- CSV Upload ---
+
+class EntityRow(BaseModel):
+    """Validation model for CSV entity rows."""
+    entity_id: str
+    company: str = ""
+    role: str = ""
+    source: str = ""
+    signup_date: str = ""
+
+
+class UploadResponse(BaseModel):
+    run_id: str
+    status: str
+    entities_uploaded: int
+    entities_processed: int
+    entities_failed: int
+    dry_run: bool
+    validation_errors: list[str] = Field(default_factory=list)

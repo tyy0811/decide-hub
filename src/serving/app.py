@@ -1,12 +1,14 @@
 """FastAPI application — /rank, /evaluate, /automate, /approvals, /runs, /metrics endpoints."""
 
 import asyncio
+import csv
+import io
 import os
 import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Path, Query, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Path, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -32,6 +34,7 @@ from src.serving.schemas import (
     EvalResultItem, EvalResultsResponse,
     LoginRequest, LoginResponse,
     WebhookRequest, WebhookResponse,
+    EntityRow, UploadResponse,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
 from src.serving.auth import authenticate_user, create_token, get_current_user, require_role
@@ -223,7 +226,7 @@ async def evaluate(req: EvaluateRequest):
 
 @app.get("/runs/{run_id}", response_model=RunDetailResponse)
 async def get_run_detail_endpoint(
-    run_id: str = Path(pattern=r"^(run|webhook|retry)_[a-f0-9_]+$"),
+    run_id: str = Path(pattern=r"^(run|webhook|retry|upload)_[a-f0-9_]+$"),
     user: dict = Depends(get_current_user),
 ):
     if not _db_available:
@@ -569,6 +572,65 @@ async def get_anomalies(
         anomalies=[AnomalyItem(**a) for a in all_anomalies],
         baseline_window=len(baseline_rows),
         recent_window=len(recent_rows),
+    )
+
+
+@app.post("/automate/upload", response_model=UploadResponse)
+async def upload_entities(
+    file: UploadFile = File(...),
+    dry_run: bool = Form(default=False),
+    user: dict = Depends(require_role("operator")),
+):
+    """Upload CSV of entities for automation processing.
+
+    Validates all rows before processing. Returns 422 with row-level
+    errors if any row fails validation. No partial processing.
+    """
+    if not _db_available and not dry_run:
+        raise HTTPException(503, "Database not available for non-dry-run")
+
+    if not _automate_limiter.allow():
+        rate_limited_total.labels(endpoint="/automate/upload", reason="run_frequency").inc()
+        raise HTTPException(429, detail="Rate limit exceeded",
+                            headers={"Retry-After": str(int(_automate_limiter.retry_after()) + 1)})
+
+    # Read and parse CSV
+    content = await file.read()
+    text = content.decode("utf-8")
+    reader = csv.DictReader(io.StringIO(text))
+
+    entities = []
+    errors = []
+    for i, row in enumerate(reader, start=2):  # row 1 is header
+        try:
+            validated = EntityRow(**row)
+            entities.append(validated.model_dump())
+        except Exception as e:
+            errors.append(f"Row {i}: {e}")
+
+    if errors:
+        raise HTTPException(422, detail={"message": "CSV validation failed", "errors": errors})
+
+    if not entities:
+        raise HTTPException(422, detail="CSV contains no data rows")
+
+    if len(entities) > MAX_ENTITIES_PER_RUN:
+        raise HTTPException(422, detail=f"Entity count {len(entities)} exceeds maximum {MAX_ENTITIES_PER_RUN}")
+
+    run_id = f"upload_{uuid.uuid4().hex[:12]}"
+    result = await run_automation_pipeline(
+        entities=entities,
+        run_id=run_id,
+        dry_run=dry_run,
+    )
+
+    return UploadResponse(
+        run_id=run_id,
+        status="completed",
+        entities_uploaded=len(entities),
+        entities_processed=result["entities_processed"],
+        entities_failed=result["entities_failed"],
+        dry_run=dry_run,
     )
 
 

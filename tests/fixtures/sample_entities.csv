@@ -1,0 +1,6 @@
+entity_id,company,role,source,signup_date
+csv_001,TechCorp,CTO,organic,2026-04-01
+csv_002,StartupInc,Engineer,referral,2026-03-28
+csv_003,BigEnterprise,VP Sales,organic,2026-03-15
+csv_004,,PM,paid_ad,2026-02-01
+csv_005,OldCo,Intern,cold_outbound,2025-06-15
