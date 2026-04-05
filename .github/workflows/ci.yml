@@ -122,3 +122,5 @@ jobs:
 
       - name: Run Playwright tests
         run: cd operator_ui && npx playwright test
+        env:
+          ALLOW_INSECURE_AUTH: "true"
