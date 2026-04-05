@@ -270,3 +270,16 @@ something looks wrong, but cannot change system state. Approval
 endpoints mutate the action queue and must be gated. The distinction
 mirrors standard practice: monitoring dashboards are public within the
 network, admin actions require authentication.
+
+## 20. In-process WebSocket broadcast for live dashboard updates
+
+WebSocket events (run_started, entity_processed, run_completed) are
+broadcast to all connected dashboard clients during automation runs.
+The connection manager is an in-process set — no Redis pub/sub.
+Multi-process deployment would need a message broker, which is a
+deployment concern, not a design concern.
+
+The frontend buffers incoming events in a useRef and flushes every
+500ms to prevent React re-rendering 100 times during a 100-entity
+run. On run_completed, it triggers a full REST refetch to ensure
+state consistency.
