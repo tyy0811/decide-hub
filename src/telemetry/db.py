@@ -1,5 +1,6 @@
 """asyncpg database layer — pool + parameterized query helpers."""
 
+import asyncio
 import json
 import asyncpg
 import yaml
@@ -336,15 +337,17 @@ async def get_run_detail(run_id: str) -> dict | None:
     )
     if not run:
         return None
-    outcomes = await pool.fetch(
-        "SELECT entity_id, action_taken, rule_matched, permission_result "
-        "FROM automation_outcomes WHERE run_id = $1 ORDER BY created_at",
-        run_id,
-    )
-    audits = await pool.fetch(
-        "SELECT entity_id, actor, action_type, reason "
-        "FROM action_audit_log WHERE run_id = $1 ORDER BY created_at",
-        run_id,
+    outcomes, audits = await asyncio.gather(
+        pool.fetch(
+            "SELECT entity_id, action_taken, rule_matched, permission_result "
+            "FROM automation_outcomes WHERE run_id = $1 ORDER BY created_at",
+            run_id,
+        ),
+        pool.fetch(
+            "SELECT entity_id, actor, action_type, reason "
+            "FROM action_audit_log WHERE run_id = $1 ORDER BY created_at",
+            run_id,
+        ),
     )
     return {
         **dict(run),

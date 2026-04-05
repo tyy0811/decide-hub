@@ -130,12 +130,24 @@ def test_anomalies_endpoint(client):
 
 def test_run_detail_404(client):
     """Run detail for nonexistent run returns 404 or 503."""
-    resp = client.get("/runs/nonexistent_run_id")
+    resp = client.get("/runs/run_000000000000")
     assert resp.status_code in (404, 503)
 
 
-def test_eval_results_empty(client):
-    """Eval results returns empty list initially."""
+def test_run_detail_invalid_format(client):
+    """Run detail with invalid run_id format returns 422."""
+    resp = client.get("/runs/not_a_valid_id")
+    assert resp.status_code == 422
+
+
+def test_eval_results_returns_cached(client):
+    """Eval results returns cached entries from prior POST /evaluate calls."""
     resp = client.get("/evaluate/results")
     assert resp.status_code == 200
-    assert isinstance(resp.json()["results"], list)
+    results = resp.json()["results"]
+    assert isinstance(results, list)
+    # Prior test_evaluate_endpoint populates the cache — verify structure if non-empty
+    for r in results:
+        assert "policy" in r
+        assert "k" in r
+        assert "metrics" in r

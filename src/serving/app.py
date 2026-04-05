@@ -6,7 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -200,7 +200,8 @@ async def rank(req: RankRequest):
 
 
 # Cache of last evaluation results (populated by POST /evaluate)
-_eval_cache: list[dict] = []
+# Keyed on (policy, k) to deduplicate — re-evaluation overwrites prior result.
+_eval_cache: dict[tuple[str, int], dict] = {}
 
 
 @app.post("/evaluate", response_model=EvaluateResponse)
@@ -219,7 +220,7 @@ async def evaluate(req: EvaluateRequest):
                 reward=value, policy_id=req.policy,
             )
 
-    _eval_cache.append({"policy": req.policy, "k": req.k, "metrics": metrics})
+    _eval_cache[(req.policy, req.k)] = {"policy": req.policy, "k": req.k, "metrics": metrics}
 
     return EvaluateResponse(
         policy=req.policy,
@@ -229,7 +230,9 @@ async def evaluate(req: EvaluateRequest):
 
 
 @app.get("/runs/{run_id}", response_model=RunDetailResponse)
-async def get_run_detail_endpoint(run_id: str):
+async def get_run_detail_endpoint(
+    run_id: str = Path(pattern=r"^run_[a-f0-9]{12}$"),
+):
     if not _db_available:
         raise HTTPException(503, "Database not available")
     detail = await db.get_run_detail(run_id)
@@ -252,7 +255,7 @@ async def get_run_detail_endpoint(run_id: str):
 async def get_eval_results():
     """Return cached evaluation results. Populated by POST /evaluate or make eval."""
     return EvalResultsResponse(
-        results=[EvalResultItem(**r) for r in _eval_cache]
+        results=[EvalResultItem(**r) for r in _eval_cache.values()]
     )
 
 
