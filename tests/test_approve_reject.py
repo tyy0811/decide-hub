@@ -80,9 +80,6 @@ def test_approve_endpoint_wrong_key():
     old = os.environ.get("OPERATOR_API_KEY")
     os.environ["OPERATOR_API_KEY"] = "correct-key"
     try:
-        # Reload the module-level variable
-        import src.serving.app as app_mod
-        app_mod._OPERATOR_API_KEY = "correct-key"
         with TestClient(app) as client:
             resp = client.post(
                 "/approvals/99999/approve",
@@ -90,7 +87,6 @@ def test_approve_endpoint_wrong_key():
             )
             assert resp.status_code == 403
     finally:
-        app_mod._OPERATOR_API_KEY = old
         if old is None:
             os.environ.pop("OPERATOR_API_KEY", None)
         else:
@@ -99,9 +95,9 @@ def test_approve_endpoint_wrong_key():
 
 def test_approve_endpoint_valid_key_reaches_db():
     """Approve with correct API key passes auth and reaches DB layer."""
-    import src.serving.app as app_mod
-    old = app_mod._OPERATOR_API_KEY
-    app_mod._OPERATOR_API_KEY = "test-key"
+    import os
+    old = os.environ.get("OPERATOR_API_KEY")
+    os.environ["OPERATOR_API_KEY"] = "test-key"
     try:
         with TestClient(app) as client:
             resp = client.post(
@@ -111,4 +107,7 @@ def test_approve_endpoint_valid_key_reaches_db():
             # 404 (approval not found) or 503 (no DB) — not 403
             assert resp.status_code in (404, 503)
     finally:
-        app_mod._OPERATOR_API_KEY = old
+        if old is None:
+            os.environ.pop("OPERATOR_API_KEY", None)
+        else:
+            os.environ["OPERATOR_API_KEY"] = old

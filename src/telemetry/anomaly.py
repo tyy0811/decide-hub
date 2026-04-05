@@ -56,7 +56,7 @@ def detect_distribution_drift(
         recent_values = np.array([d.get(action, 0.0) for d in recent_props])
 
         baseline_mean = float(baseline_values.mean())
-        baseline_std = float(baseline_values.std())
+        baseline_std = float(baseline_values.std(ddof=1)) if len(baseline_values) > 1 else 0.0
 
         if baseline_std < 1e-10:
             # No variation in baseline — any deviation is anomalous
@@ -100,7 +100,7 @@ def detect_rate_spike(
     recent = np.array(recent_rates)
 
     baseline_mean = float(baseline.mean())
-    baseline_std = float(baseline.std())
+    baseline_std = float(baseline.std(ddof=1)) if len(baseline) > 1 else 0.0
 
     if baseline_std < 1e-10:
         recent_mean = float(recent.mean())

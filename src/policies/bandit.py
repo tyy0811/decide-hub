@@ -76,7 +76,7 @@ class EpsilonGreedyPolicy(BasePolicy):
         scored = []
         for item in items:
             count = self.arm_counts.get(item, 0)
-            estimate = self.arm_rewards[item] / count if count > 0 else 0.0
+            estimate = self.arm_rewards.get(item, 0.0) / count if count > 0 else 0.0
             scored.append((item, estimate))
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
@@ -99,7 +99,7 @@ class EpsilonGreedyPolicy(BasePolicy):
         scored = []
         for item in items:
             count = self.arm_counts.get(item, 0)
-            estimate = self.arm_rewards[item] / count if count > 0 else 0.0
+            estimate = self.arm_rewards.get(item, 0.0) / count if count > 0 else 0.0
             scored.append((item, estimate))
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored

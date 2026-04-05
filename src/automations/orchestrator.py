@@ -42,11 +42,16 @@ async def run_automation_pipeline(
     today = date.today()
     rules = load_rules_config()
     permissions = load_permissions_config()
-    shadow_rules = (
-        load_rules_config(path=Path(shadow_rules_config))
-        if shadow_rules_config
-        else None
-    )
+    shadow_rules = None
+    if shadow_rules_config:
+        shadow_path = Path(shadow_rules_config).resolve()
+        allowed_dir = Path(__file__).resolve().parent
+        if not str(shadow_path).startswith(str(allowed_dir)):
+            raise ValueError(
+                f"shadow_rules_config must be under {allowed_dir}, "
+                f"got {shadow_path}"
+            )
+        shadow_rules = load_rules_config(path=shadow_path)
     shadow_action_counts: Counter = Counter()
 
     if not dry_run:

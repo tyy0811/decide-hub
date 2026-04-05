@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS failed_entities (
     error_type TEXT NOT NULL,
     error_message TEXT,
     retry_count INTEGER DEFAULT 0,
+    max_retries INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'failed',
+    entity_data JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -92,7 +95,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_entity ON action_audit_log(entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_run ON action_audit_log(run_id);
 CREATE INDEX IF NOT EXISTS idx_audit_type ON action_audit_log(action_type);
 
--- Retry logic columns on failed_entities
+-- Migration path: add retry columns to existing failed_entities tables.
+-- These columns are already in the CREATE TABLE above for fresh installs.
 ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS max_retries INTEGER DEFAULT 0;
 ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'failed';
 ALTER TABLE failed_entities ADD COLUMN IF NOT EXISTS entity_data JSONB;

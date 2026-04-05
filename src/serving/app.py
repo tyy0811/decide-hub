@@ -30,7 +30,7 @@ from src.serving.schemas import (
     AnomalyResponse, AnomalyItem,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
-from src.serving.rate_limit import SlidingWindowRateLimiter, check_entity_cap, check_backpressure
+from src.serving.rate_limit import SlidingWindowRateLimiter, check_backpressure
 from src.telemetry import db
 from src.telemetry.audit import log_audit_event
 from src.telemetry.metrics import get_metrics, get_content_type, rank_requests, api_latency, rate_limited_total
@@ -42,20 +42,27 @@ _policies: dict[str, BasePolicy] = {}
 _train_data = None
 _test_data = None
 _db_available = False
+# Per-process rate limiter — with multiple Uvicorn workers, the effective
+# limit is multiplied by the number of workers. Use a shared backend
+# (Redis) if multi-worker rate limiting is needed.
 _automate_limiter = SlidingWindowRateLimiter(max_requests=5, window_seconds=60.0)
 
 MAX_ENTITIES_PER_RUN = 100
-_OPERATOR_API_KEY = os.environ.get("OPERATOR_API_KEY")
 
 
 def _require_operator_key(x_operator_key: str | None = Header(None)) -> None:
-    """Validate operator API key for approval-changing endpoints."""
-    if not _OPERATOR_API_KEY:
+    """Validate operator API key for approval-changing endpoints.
+
+    Reads OPERATOR_API_KEY from env on every call so key rotation
+    does not require a server restart.
+    """
+    api_key = os.environ.get("OPERATOR_API_KEY")
+    if not api_key:
         raise HTTPException(
             403,
             "OPERATOR_API_KEY not configured — approval endpoints disabled",
         )
-    if x_operator_key != _OPERATOR_API_KEY:
+    if x_operator_key != api_key:
         raise HTTPException(403, "Invalid or missing X-Operator-Key header")
 
 
@@ -95,7 +102,7 @@ async def lifespan(app: FastAPI):
     try:
         import json
         from pathlib import Path
-        corpus_path = Path("tests/fixtures/retrieval_corpus.json")
+        corpus_path = Path("data/retrieval_corpus.json")
         if corpus_path.exists():
             corpus_data = json.loads(corpus_path.read_text())
             doc_rows = [

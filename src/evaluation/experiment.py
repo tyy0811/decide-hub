@@ -28,10 +28,9 @@ def bootstrap_ci(
         raise ValueError("Cannot compute CI on empty data")
     rng = np.random.default_rng(seed)
     n = len(data)
-    means = np.array([
-        rng.choice(data, size=n, replace=True).mean()
-        for _ in range(n_resamples)
-    ])
+    # Vectorized bootstrap: generate all resample indices at once
+    indices = rng.integers(0, n, size=(n_resamples, n))
+    means = data[indices].mean(axis=1)
     alpha = 1 - confidence
     lower = float(np.percentile(means, 100 * alpha / 2))
     upper = float(np.percentile(means, 100 * (1 - alpha / 2)))
@@ -82,15 +81,11 @@ def run_experiment(
             f"treatment length {len(treatment)}"
         )
 
-    # Effect = treatment_mean - control_mean
+    # Effect = treatment_mean - control_mean (vectorized bootstrap)
     rng = np.random.default_rng(seed)
-    effects = []
-    for _ in range(n_resamples):
-        c_sample = rng.choice(control, size=len(control), replace=True)
-        t_sample = rng.choice(treatment, size=len(treatment), replace=True)
-        effects.append(t_sample.mean() - c_sample.mean())
-
-    effects = np.array(effects)
+    c_indices = rng.integers(0, len(control), size=(n_resamples, len(control)))
+    t_indices = rng.integers(0, len(treatment), size=(n_resamples, len(treatment)))
+    effects = treatment[t_indices].mean(axis=1) - control[c_indices].mean(axis=1)
     alpha = 1 - confidence
     ci_lower = float(np.percentile(effects, 100 * alpha / 2))
     ci_upper = float(np.percentile(effects, 100 * (1 - alpha / 2)))

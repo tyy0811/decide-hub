@@ -15,7 +15,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from src.policies.base import BasePolicy
 from src.evaluation.naive import graded_ndcg_at_k, mrr, hit_rate_at_k
 
-_DEFAULT_CORPUS = Path("tests/fixtures/retrieval_corpus.json")
+_DEFAULT_CORPUS = Path("data/retrieval_corpus.json")
 
 
 class RetrievalPolicy(BasePolicy):
