@@ -37,6 +37,7 @@ from src.serving.schemas import (
     EntityRow, UploadResponse,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
+from src.telemetry.posthog import capture_event
 from src.serving.auth import authenticate_user, create_token, get_current_user, require_role
 from src.serving.ws import ws_manager
 from src.serving.rate_limit import SlidingWindowRateLimiter, check_backpressure
@@ -186,6 +187,10 @@ async def rank(req: RankRequest):
     top_k = scored[:req.k]
 
     api_latency.labels(endpoint="/rank").observe(time.time() - start)
+    capture_event("rank_request", {
+        "policy": req.policy, "user_id": req.user_id, "k": req.k,
+        "latency_ms": round((time.time() - start) * 1000, 1),
+    })
 
     return RankResponse(
         user_id=req.user_id,
@@ -292,6 +297,10 @@ async def automate(req: AutomateRequest, user: dict = Depends(require_role("oper
         )
 
     run_id = f"run_{uuid.uuid4().hex[:12]}"
+    capture_event("automation_triggered", {
+        "run_id": run_id, "entity_count": len(entities),
+        "dry_run": req.dry_run, "source": "api",
+    })
     result = await run_automation_pipeline(
         entities=entities,
         run_id=run_id,
@@ -624,6 +633,10 @@ async def upload_entities(
         raise HTTPException(422, detail=f"Entity count {len(entities)} exceeds maximum {MAX_ENTITIES_PER_RUN}")
 
     run_id = f"upload_{uuid.uuid4().hex[:12]}"
+    capture_event("automation_triggered", {
+        "run_id": run_id, "entity_count": len(entities),
+        "dry_run": dry_run, "source": "upload",
+    })
     result = await run_automation_pipeline(
         entities=entities,
         run_id=run_id,
@@ -668,6 +681,10 @@ async def webhook_automate(
         raise HTTPException(422, f"Entity count {len(req.entities)} exceeds maximum {MAX_ENTITIES_PER_RUN}")
 
     run_id = f"webhook_{uuid.uuid4().hex[:12]}"
+    capture_event("automation_triggered", {
+        "run_id": run_id, "entity_count": len(req.entities),
+        "dry_run": req.dry_run, "source": "webhook",
+    })
 
     if req.dry_run:
         # Dry run: execute synchronously (no DB writes)

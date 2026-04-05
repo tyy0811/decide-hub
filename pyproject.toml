@@ -16,6 +16,7 @@ dependencies = [
     "numpy>=1.26",
     "PyJWT>=2.0",
     "python-multipart>=0.0.9",
+    "posthog>=3.0",
 ]
 
 [project.optional-dependencies]
