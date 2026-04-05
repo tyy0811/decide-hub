@@ -10,6 +10,15 @@ def client():
         yield c
 
 
+def _get_operator_token(client) -> str:
+    resp = client.post("/auth/login", json={"username": "admin", "password": "admin"})
+    return resp.json()["token"]
+
+
+def _auth_headers(client) -> dict:
+    return {"Authorization": f"Bearer {_get_operator_token(client)}"}
+
+
 def test_rank_endpoint_returns_items(client):
     """POST /rank returns scored items."""
     response = client.post("/rank", json={
@@ -59,9 +68,18 @@ def test_automate_endpoint_dry_run(client):
     response = client.post("/automate", json={
         "source_url": "http://localhost:19999/nonexistent",
         "dry_run": True,
-    })
+    }, headers=_auth_headers(client))
     # Source unreachable — should return 502, not crash
     assert response.status_code == 502
+
+
+def test_automate_no_auth_returns_401(client):
+    """POST /automate without auth returns 401."""
+    response = client.post("/automate", json={
+        "source_url": "http://localhost:19999/nonexistent",
+        "dry_run": True,
+    })
+    assert response.status_code == 401
 
 
 def test_metrics_endpoint(client):
@@ -118,8 +136,8 @@ def test_rank_retrieval_without_query_returns_422(client):
 
 
 def test_anomalies_endpoint(client):
-    """Anomalies endpoint returns valid response."""
-    resp = client.get("/anomalies")
+    """Anomalies endpoint returns valid response with auth."""
+    resp = client.get("/anomalies", headers=_auth_headers(client))
     if resp.status_code == 200:
         data = resp.json()
         assert data["status"] in ("ok", "alert")
@@ -130,19 +148,19 @@ def test_anomalies_endpoint(client):
 
 def test_run_detail_404(client):
     """Run detail for nonexistent run returns 404 or 503."""
-    resp = client.get("/runs/run_000000000000")
+    resp = client.get("/runs/run_000000000000", headers=_auth_headers(client))
     assert resp.status_code in (404, 503)
 
 
 def test_run_detail_invalid_format(client):
     """Run detail with invalid run_id format returns 422."""
-    resp = client.get("/runs/not_a_valid_id")
+    resp = client.get("/runs/not_a_valid_id", headers=_auth_headers(client))
     assert resp.status_code == 422
 
 
 def test_eval_results_returns_cached(client):
     """Eval results returns cached entries from prior POST /evaluate calls."""
-    resp = client.get("/evaluate/results")
+    resp = client.get("/evaluate/results", headers=_auth_headers(client))
     assert resp.status_code == 200
     results = resp.json()["results"]
     assert isinstance(results, list)

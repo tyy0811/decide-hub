@@ -54,3 +54,33 @@ def test_viewer_role_exists():
     """At least one viewer user exists."""
     viewers = [u for u in USERS.values() if u["role"] == "viewer"]
     assert len(viewers) >= 1
+
+
+# --- API integration tests ---
+
+from fastapi.testclient import TestClient
+from src.serving.app import app
+
+
+def test_login_endpoint():
+    """Valid login returns token."""
+    with TestClient(app) as client:
+        resp = client.post("/auth/login", json={"username": "admin", "password": "admin"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "token" in data
+        assert data["role"] == "operator"
+
+
+def test_login_invalid():
+    """Invalid credentials return 401."""
+    with TestClient(app) as client:
+        resp = client.post("/auth/login", json={"username": "admin", "password": "wrong"})
+        assert resp.status_code == 401
+
+
+def test_health_no_auth_required():
+    """Health endpoint works without auth."""
+    with TestClient(app) as client:
+        resp = client.get("/health")
+        assert resp.status_code == 200

@@ -6,7 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -30,8 +30,10 @@ from src.serving.schemas import (
     AnomalyResponse, AnomalyItem,
     RunDetailResponse, RunOutcomeItem, AuditEventItem,
     EvalResultItem, EvalResultsResponse,
+    LoginRequest, LoginResponse,
 )
 from src.telemetry.anomaly import detect_distribution_drift, detect_rate_spike
+from src.serving.auth import authenticate_user, create_token, get_current_user, require_role
 from src.serving.ws import ws_manager
 from src.serving.rate_limit import SlidingWindowRateLimiter, check_backpressure
 from src.telemetry import db
@@ -51,27 +53,6 @@ _db_available = False
 _automate_limiter = SlidingWindowRateLimiter(max_requests=5, window_seconds=60.0)
 
 MAX_ENTITIES_PER_RUN = 100
-
-
-def _require_operator_key(
-    x_operator_key: str | None = Header(None),
-    x_operator_name: str | None = Header(None),
-) -> str:
-    """Validate operator API key and return operator identity.
-
-    Reads OPERATOR_API_KEY from env on every call so key rotation
-    does not require a server restart. Returns the operator name
-    for audit attribution.
-    """
-    api_key = os.environ.get("OPERATOR_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            403,
-            "OPERATOR_API_KEY not configured — approval endpoints disabled",
-        )
-    if x_operator_key != api_key:
-        raise HTTPException(403, "Invalid or missing X-Operator-Key header")
-    return x_operator_name or "operator"
 
 
 def get_policies() -> dict[str, BasePolicy]:
@@ -159,6 +140,15 @@ async def metrics():
     return Response(content=get_metrics(), media_type=get_content_type())
 
 
+@app.post("/auth/login", response_model=LoginResponse)
+async def login(req: LoginRequest):
+    user = authenticate_user(req.username, req.password)
+    if not user:
+        raise HTTPException(401, "Invalid credentials")
+    token = create_token(username=user["username"], role=user["role"])
+    return LoginResponse(token=token, username=user["username"], role=user["role"])
+
+
 @app.post("/rank", response_model=RankResponse)
 async def rank(req: RankRequest):
     start = time.time()
@@ -233,6 +223,7 @@ async def evaluate(req: EvaluateRequest):
 @app.get("/runs/{run_id}", response_model=RunDetailResponse)
 async def get_run_detail_endpoint(
     run_id: str = Path(pattern=r"^run_[a-f0-9]{12}$"),
+    user: dict = Depends(get_current_user),
 ):
     if not _db_available:
         raise HTTPException(503, "Database not available")
@@ -253,7 +244,7 @@ async def get_run_detail_endpoint(
 
 
 @app.get("/evaluate/results", response_model=EvalResultsResponse)
-async def get_eval_results():
+async def get_eval_results(user: dict = Depends(get_current_user)):
     """Return cached evaluation results. Populated by POST /evaluate or make eval."""
     return EvalResultsResponse(
         results=[EvalResultItem(**r) for r in _eval_cache.values()]
@@ -261,7 +252,7 @@ async def get_eval_results():
 
 
 @app.post("/automate", response_model=AutomateResponse)
-async def automate(req: AutomateRequest):
+async def automate(req: AutomateRequest, user: dict = Depends(require_role("operator"))):
     # Rate limit check
     if not _automate_limiter.allow():
         rate_limited_total.labels(endpoint="/automate", reason="run_frequency").inc()
@@ -318,7 +309,7 @@ async def automate(req: AutomateRequest):
 
 
 @app.get("/approvals", response_model=ApprovalsResponse)
-async def get_approvals():
+async def get_approvals(user: dict = Depends(get_current_user)):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
@@ -340,7 +331,7 @@ async def get_approvals():
 
 @app.post("/approvals/{approval_id}/approve", response_model=ApprovalActionResponse)
 async def approve_action(
-    approval_id: int, operator: str = Depends(_require_operator_key),
+    approval_id: int, user: dict = Depends(require_role("operator")),
 ):
     if not _db_available:
         raise HTTPException(503, "Database not available")
@@ -360,7 +351,7 @@ async def approve_action(
     await log_audit_event(
         entity_id=approval["entity_id"],
         run_id=None,
-        actor=operator,
+        actor=f"operator:{user['username']}",
         action_type="approve",
         action=approval["proposed_action"],
         rule_matched=None,
@@ -378,7 +369,7 @@ async def approve_action(
 
 @app.post("/approvals/{approval_id}/reject", response_model=ApprovalActionResponse)
 async def reject_action(
-    approval_id: int, operator: str = Depends(_require_operator_key),
+    approval_id: int, user: dict = Depends(require_role("operator")),
 ):
     if not _db_available:
         raise HTTPException(503, "Database not available")
@@ -394,7 +385,7 @@ async def reject_action(
     await log_audit_event(
         entity_id=approval["entity_id"],
         run_id=None,
-        actor=operator,
+        actor=f"operator:{user['username']}",
         action_type="reject",
         action=approval["proposed_action"],
         rule_matched=None,
@@ -411,7 +402,7 @@ async def reject_action(
 
 
 @app.get("/runs", response_model=RunsResponse)
-async def get_runs():
+async def get_runs(user: dict = Depends(get_current_user)):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
@@ -435,7 +426,7 @@ async def get_runs():
 
 
 @app.get("/failed-entities", response_model=FailedEntitiesResponse)
-async def get_failed_entities(run_id: str | None = None):
+async def get_failed_entities(run_id: str | None = None, user: dict = Depends(get_current_user)):
     if not _db_available:
         raise HTTPException(503, "Database not available")
 
@@ -455,7 +446,7 @@ async def get_failed_entities(run_id: str | None = None):
 
 
 @app.post("/automate/retry", response_model=RetryResponse)
-async def retry_failed():
+async def retry_failed(user: dict = Depends(require_role("operator"))):
     if not _automate_limiter.allow():
         rate_limited_total.labels(endpoint="/automate/retry", reason="run_frequency").inc()
         raise HTTPException(
@@ -517,6 +508,7 @@ async def retry_failed():
 async def get_anomalies(
     baseline_runs: int = Query(default=20, ge=1),
     recent_runs: int = Query(default=5, ge=1),
+    user: dict = Depends(get_current_user),
 ):
     """Check automation outcomes for anomalies.
 

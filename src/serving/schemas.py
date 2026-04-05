@@ -180,3 +180,16 @@ class EvalResultItem(BaseModel):
 
 class EvalResultsResponse(BaseModel):
     results: list[EvalResultItem]
+
+
+# --- Auth ---
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    token: str
+    username: str
+    role: str
