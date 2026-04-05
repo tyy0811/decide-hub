@@ -230,3 +230,22 @@ The confidence level flows end-to-end: `run_experiment()` stores it in
 the result dict, and `render_markdown()` reads it from there. This
 prevents metadata drift where a caller runs an 80% CI but the report
 labels it as 95%.
+
+## 18. CF embeddings on training split only — no data leakage
+
+Collaborative filtering embeddings are computed via truncated SVD on
+the training-split user-item interaction matrix. Including test
+interactions would leak collaborative signal — the CF equivalent of
+entity memorization.
+
+The embeddings are concatenated to the existing 6 aggregate features
+and fed to the same LightGBM LambdaRank model. The scorer's
+`use_embeddings` flag is opt-in and backward compatible — the default
+scorer is unchanged.
+
+Cold-start users (not in training data) receive zero embedding vectors.
+The benchmark table reports NDCG separately for warm users (who have
+embeddings from training data) and cold-start users (who get zero
+vectors). If the improvement only comes from warm users, that's an
+honest finding showing the limitation of CF features for cold-start
+users, not a failure of the approach.

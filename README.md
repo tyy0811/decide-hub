@@ -24,7 +24,7 @@ graph TB
 
     subgraph Ranking["Ranking Policies"]
         pop["PopularityPolicy"]
-        scorer["ScorerPolicy (LightGBM)"]
+        scorer["ScorerPolicy (LightGBM + CF)"]
         bandit["EpsilonGreedyPolicy"]
         flow1["fit → score(context) → evaluate"]
     end
@@ -93,9 +93,15 @@ make test    # Run test suite
 |--------|---------|-----|------------|
 | Popularity | 0.0177 | 0.0473 | 0.0954 |
 | LightGBM LambdaRank | 0.0017 | 0.0119 | 0.0080 |
+| LightGBM + CF Embeddings (dim=8) | 0.0129 | 0.0340 | 0.0650 |
 | Epsilon-Greedy Bandit (e=0.1) | 0.0001 | 0.0078 | 0.0003 |
 
-Scorer and bandit evaluated on a 500-user test split. The bandit warm-starts from normalized average ratings (no collaborative filtering features) — offline metrics reflect the quality of the warm-start, not the bandit's online learning ability. See [DECISIONS.md](DECISIONS.md) #3 and #15.
+CF embeddings computed on training split only (no test leakage). SVD
+embedding features close the NDCG gap documented in [DECISIONS.md](DECISIONS.md)
+#3 — the scorer with CF features outperforms the base scorer by 21x on
+NDCG@10. Still below the popularity baseline because the pointwise scorer
+competes against a global count on a dataset where popular items dominate.
+See [DECISIONS.md](DECISIONS.md) #18.
 
 ## Bandit Comparison (Simulated Online)
 
@@ -180,7 +186,7 @@ docker compose down             # Stop all
 
 This repo is designed to grow from static ranking to contextual bandits to full policy learning:
 
-- Collaborative filtering features for scorer (user-item interaction matrix)
+- ~~Collaborative filtering features for scorer~~ (shipped in Phase 2 — SVD embeddings, 21x NDCG lift)
 - ~~Contextual bandits (exploration/exploitation with safety bounds)~~ (shipped in Phase 2 — epsilon-greedy with online simulation)
 - ~~Policy replay + change control~~ (shipped in Phase 1)
 - KPI/experimentation layer (A/B test simulation, confidence intervals)

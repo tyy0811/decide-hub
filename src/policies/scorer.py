@@ -54,6 +54,15 @@ class ScorerPolicy(BasePolicy):
             self._embeddings = compute_embeddings(
                 train_data, n_components=self.n_embedding_dims,
             )
+            # Pre-compute item embedding matrix aligned with _item_ids for fast score()
+            emb = self._embeddings
+            n_dims = emb["item_embeddings"].shape[1]
+            self._item_emb_matrix = np.array([
+                emb["item_embeddings"][emb["item_id_to_idx"][iid]]
+                if iid in emb["item_id_to_idx"]
+                else np.zeros(n_dims)
+                for iid in self._item_ids
+            ])
 
         pairs = build_training_pairs(
             train_data, self.user_features, self.item_features,
@@ -69,24 +78,29 @@ class ScorerPolicy(BasePolicy):
             user_emb_cols = [f"user_emb_{i}" for i in range(self.n_embedding_dims)]
             item_emb_cols = [f"item_emb_{i}" for i in range(self.n_embedding_dims)]
 
-            user_emb_data = {}
+            # Vectorized embedding lookup via numpy indexing (not per-row dict lookups)
+            pair_uids = pairs["user_id"].to_numpy()
+            pair_iids = pairs["movie_id"].to_numpy()
+
+            # Map IDs to indices, defaulting unknown to a zero-vector row
+            n_dims = emb["user_embeddings"].shape[1]
+            user_emb_padded = np.vstack([emb["user_embeddings"], np.zeros(n_dims)])
+            item_emb_padded = np.vstack([emb["item_embeddings"], np.zeros(n_dims)])
+            zero_user_idx = len(emb["user_ids"])
+            zero_item_idx = len(emb["item_ids"])
+
+            u_indices = np.array([emb["user_id_to_idx"].get(uid, zero_user_idx) for uid in pair_uids])
+            i_indices = np.array([emb["item_id_to_idx"].get(iid, zero_item_idx) for iid in pair_iids])
+
+            user_emb_matrix = user_emb_padded[u_indices]  # (n_pairs, n_dims)
+            item_emb_matrix = item_emb_padded[i_indices]
+
+            emb_columns = []
             for col_idx, col_name in enumerate(user_emb_cols):
-                user_emb_data[col_name] = [
-                    float(emb["user_embeddings"][emb["user_id_to_idx"][uid]][col_idx])
-                    if uid in emb["user_id_to_idx"] else 0.0
-                    for uid in pairs["user_id"].to_list()
-                ]
-            item_emb_data = {}
+                emb_columns.append(pl.Series(name=col_name, values=user_emb_matrix[:, col_idx]))
             for col_idx, col_name in enumerate(item_emb_cols):
-                item_emb_data[col_name] = [
-                    float(emb["item_embeddings"][emb["item_id_to_idx"][iid]][col_idx])
-                    if iid in emb["item_id_to_idx"] else 0.0
-                    for iid in pairs["movie_id"].to_list()
-                ]
-            pairs = pairs.with_columns([
-                pl.Series(name=k, values=v)
-                for k, v in {**user_emb_data, **item_emb_data}.items()
-            ])
+                emb_columns.append(pl.Series(name=col_name, values=item_emb_matrix[:, col_idx]))
+            pairs = pairs.with_columns(emb_columns)
             self._feature_cols.extend(user_emb_cols + item_emb_cols)
 
         X = pairs.select(self._feature_cols).to_numpy()
@@ -147,13 +161,8 @@ class ScorerPolicy(BasePolicy):
                 user_emb = np.zeros(self.n_embedding_dims)
             user_vals = np.concatenate([user_vals, user_emb])
 
-            item_embs = np.array([
-                emb["item_embeddings"][emb["item_id_to_idx"][self._item_ids[i]]]
-                if self._item_ids[i] in emb["item_id_to_idx"]
-                else np.zeros(self.n_embedding_dims)
-                for i in item_indices
-            ])
-            known_features = np.hstack([known_features, item_embs])
+            # Use precomputed item embedding matrix (indexed same as _item_ids)
+            known_features = np.hstack([known_features, self._item_emb_matrix[item_indices]])
 
         # Broadcast user features across all items
         n_known = len(known_ids)
