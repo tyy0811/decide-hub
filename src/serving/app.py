@@ -102,7 +102,10 @@ async def lifespan(app: FastAPI):
         print(f"Warning: PointwiseScorerPolicy failed to fit: {e}")
 
     try:
-        neural = NeuralScorerPolicy(epochs=5, embed_dim=16).fit(_train_data)
+        # Subsample for neural — per-sample BPR training is O(n_pos * epochs),
+        # full MovieLens (970K rows) would hang startup for 30+ minutes.
+        neural_train = _train_data.sample(n=min(10_000, len(_train_data)), seed=42)
+        neural = NeuralScorerPolicy(epochs=5, embed_dim=16).fit(neural_train)
         _policies["neural"] = neural
     except Exception as e:
         print(f"Warning: NeuralScorerPolicy failed to fit: {e}")
