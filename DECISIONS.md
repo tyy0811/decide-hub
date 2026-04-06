@@ -1,5 +1,37 @@
 # Design Decisions
 
+| # | Decision | Category |
+|---|----------|----------|
+| 1 | MovieLens for ranking, synthetic for IPS | Data |
+| 2 | IPS over complex causal methods | Evaluation |
+| 3 | LightGBM LambdaRank — honest underperformance | Ranking |
+| 4 | Rule-driven automation, not ML-driven | Automation |
+| 5 | Postgres over DuckDB | Infrastructure |
+| 6 | IPS evaluation results on synthetic data | Evaluation |
+| 7 | Permission layer between rules and execution | Automation |
+| 8 | Per-entity error handling instead of fail-fast | Automation |
+| 9 | Next.js for the operator dashboard | Frontend |
+| 10 | Postgres schema created on Day 1 | Infrastructure |
+| 11 | asyncpg + raw SQL instead of SQLAlchemy | Infrastructure |
+| 12 | Separate interfaces for ranking and automation | Architecture |
+| 13 | Policy replay for change control | Safety |
+| 14 | Shadow mode for safe policy deployment | Safety |
+| 15 | Epsilon-greedy bandit with in-memory arm state | Ranking |
+| 16 | TF-IDF retrieval over FAISS for 30-doc corpus | Ranking |
+| 17 | Bootstrap CIs without p-values | Evaluation |
+| 18 | CF embeddings on training split only | Ranking |
+| 19 | Anomaly detection at 3 SD threshold | Safety |
+| 20 | In-process WebSocket broadcast | Infrastructure |
+| 21 | Hardcoded users with JWT auth | Infrastructure |
+| 22 | Webhook returns 202 Accepted for async processing | Automation |
+| 23 | Pointwise vs pairwise: objective matters more than model | Ranking |
+| 24 | Two-tower neural ranker: architecture vs data regime | Ranking |
+| 25 | Doubly Robust: correct when either component is right | Evaluation |
+| 26 | pLTV labels: discard samples crossing temporal boundary | Ranking |
+| 27 | K-means categories for diversity constraints | Ranking |
+
+---
+
 ## 1. MovieLens for ranking metrics, synthetic data for counterfactual evaluation
 
 MovieLens 1M is a standard recommendation benchmark with user/item features and
